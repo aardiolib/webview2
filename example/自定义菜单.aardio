@@ -1,0 +1,59 @@
+import console;
+import win.ui;
+import webview2;
+import inet.http;
+
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	var icodata = inet.http.get("https://aardio.com/favicon.ico");
+	
+	//创建菜单图标
+	var icon = ::Shlwapi.SHCreateMemStream(icodata,#icodata);
+	
+	//创建上下文菜单
+	var menuItem = createdEnvironment.CreateContextMenuItem("自定义菜单", icon, 0);
+	
+	//添加菜单点击事件
+	menuItem.add_CustomItemSelected(function(){
+		console.log("点击了自定义菜单");
+	})
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		//添加 ContextMenuRequested 事件处理程序
+		m_webView.add_ContextMenuRequested(function(args){
+			
+			var menuItemCollection = args.get_MenuItems();
+			//插入自定义菜单
+			menuItemCollection.InsertValueAtIndex(0, menuItem)
+			
+			//获取调用菜单的数据
+			var contextMenuTarget = args.get_ContextMenuTarget();
+			
+			console.log("选择的文本",contextMenuTarget.get_SelectionText())
+		});
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

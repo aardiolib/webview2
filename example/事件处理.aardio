@@ -1,0 +1,56 @@
+import console;
+import win.ui;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		//添加 NavigationCompleted 事件处理程序
+		//NavigationCompleted 在 WebView 完全加载（在 body.onload 运行时同时运行）或加载因错误而停止时运行。
+		m_webView.add_NavigationCompleted(function(args){
+			console.log("NavigationCompleted",args.get_IsSuccess());
+			//完成加载后显示窗口
+			winform.show(true);
+		})
+		
+		//添加 NewWindowRequested 事件处理程序
+		m_webView.add_NewWindowRequested(function(args){
+			console.log("NewWindowRequested",args.get_Uri());
+			
+			args.put_Handled(true);
+			m_webView.Navigate(args.get_Uri());
+		})
+		
+		//添加 DocumentTitleChanged 事件处理程序
+		m_webView.add_DocumentTitleChanged(function(){
+			console.log("DocumentTitleChanged",m_webView.get_DocumentTitle());
+			
+			winform.text = m_webView.get_DocumentTitle();
+		})
+		
+		//更多事件参见 https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+})
+
+
+
+
+
+win.loopMessage();

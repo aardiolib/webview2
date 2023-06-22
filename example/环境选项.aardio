@@ -1,0 +1,45 @@
+import console;
+import win.ui;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+var browserExecutableFolder;
+var userDataFolder;
+
+//创建环境选项
+var environmentOptions = ..webview2.CreateCoreWebView2EnvironmentOptions();
+
+if(environmentOptions){
+	//设置浏览器语言
+	environmentOptions.put_Language("en");
+	//更多内容 https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environmentoptions
+}
+
+//创建具有自定义版本的 WebView2 运行时、用户数据文件夹以及带或不带其他选项的 WebView2 环境。
+..webview2.CreateCoreWebView2EnvironmentWithOptions(browserExecutableFolder,userDataFolder,environmentOptions,function(errorCode,createdEnvironment){
+
+	//异步创建新的 Web 视图。
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

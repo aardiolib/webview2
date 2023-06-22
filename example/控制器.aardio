@@ -1,0 +1,53 @@
+import console;
+import win.ui;
+import web.json;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	//创建控制器
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		//设置 webview 边界
+		createdController.put_Bounds(winform.getClientRect());
+		
+		//设置是否显示 webview 控件
+		createdController.put_IsVisible(true);
+		
+		winform.onActivate = function(state,hwndOther,minimized){
+			if(state){
+				//将焦点移至 WebView。
+				winform.setTimeout(function(){
+					createdController.MoveFocus(0);
+				},0)
+			}
+		}
+		//设置焦点到webview
+		createdController.MoveFocus(0);
+		
+		//获取控制器关联的webview2
+		var m_webView = createdController.get_CoreWebView2();
+		
+		m_webView.Navigate("https://www.baidu.com/");
+		
+		//关闭 Web 视图并清理基础浏览器实例。
+		//createdController.Close();
+		
+		//更多内容 https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2controller
+		
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

@@ -1,0 +1,54 @@
+import console;
+import win.ui;
+import web.json;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		//CDP 事件监听
+		//调用CDP方法，启用网络跟踪，网络事件现在将传递到客户端。
+		m_webView.CallDevToolsProtocolMethod("Network.enable");
+		
+		//获取允许您订阅 DevToolsProtocol 事件的 DevToolsProtocol 事件接收器。
+		res = m_webView.GetDevToolsProtocolEventReceiver("Network.responseReceived")
+		
+		res.add_DevToolsProtocolEventReceived(function(args){	
+			//获取相应 DevToolsProtocol 事件的参数对象，表示为 JSON 字符串。
+			var jsonstr = args.get_ParameterObjectAsJson();
+			var json = web.json.parse(jsonstr) //json.requestId,json.response.mimeType,json.response.url, json.response.headers["Content-Type"]
+			
+			console.dump(json);
+	  		
+	  		//调用CDP方法获取响应体
+	   		m_webView.CallDevToolsProtocolMethod("Network.getResponseBody",args.get_ParameterObjectAsJson(),function(errorCode, returnObjectAsJson){
+	  	 		console.log( returnObjectAsJson )
+	  		});
+	  		
+		})
+
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

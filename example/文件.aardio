@@ -1,0 +1,68 @@
+import console;
+import win.ui;
+import web.json;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		//获取文件路径
+		m_webView.add_WebMessageReceived(function(args){
+			var objectsCollection = args.get_AdditionalObjects();
+			if(objectsCollection){
+				var len = objectsCollection.get_Count();
+				for(i=1;len;1){
+					var object = objectsCollection.GetValueAtIndex(i-1);
+					var file = ..webview2.ICoreWebView2File(object);
+					console.log(file.get_Path())
+				}
+			}
+			
+		})
+		
+		var html = /**
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input id="upload" type="file" multiple="multiple"  >
+    <script>
+        upload.onchange = function(e){
+            window.chrome.webview.postMessageWithAdditionalObjects("files",upload.files)
+        }
+
+    </script>
+</body>
+</html>
+		**/
+		
+		m_webView.NavigateToString(html);
+		
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

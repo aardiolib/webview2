@@ -1,0 +1,46 @@
+import console;
+import win.ui;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		//获取设置对象
+		var settings = m_webView.get_Settings();
+		
+		//设置 不显示默认上下文菜单
+		settings.put_AreDefaultContextMenusEnabled(false);
+		
+		//设置 不显示状态栏，状态栏通常显示在 WebView 的左下角，当用户将鼠标悬停在链接上时，会显示链接的 URI 和其他信息。
+		settings.put_IsStatusBarEnabled(false);
+		
+		//设置 禁用访问特定于 Web 浏览器的功能的所有快捷键
+		settings.put_AreBrowserAcceleratorKeysEnabled(false);
+		
+		m_webView.Navigate("https://www.baidu.com/");
+		
+		//更多设置参见 https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2settings
+		
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

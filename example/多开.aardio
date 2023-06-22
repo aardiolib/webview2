@@ -1,0 +1,52 @@
+import console;
+import win.ui;
+import web.json;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add(
+custom={cls="custom";text="自定义控件";left=0;top=2;right=376;bottom=470;ah=1;aw=1;bgcolor=15780518;z=1};
+custom2={cls="custom";text="自定义控件";left=383;top=1;right=759;bottom=469;ah=1;aw=1;bgcolor=10789024;z=2};
+splitter3={cls="splitter";left=377;top=3;right=382;bottom=469;ah=1;frame=1;z=3}
+)
+/*}}*/
+
+winform.splitter3.split(winform.custom,winform.custom2);
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	//创建控件1
+	createdEnvironment.CreateCoreWebView2Controller(winform.custom,function(errorCode, createdController){
+		winform.custom.adjust = function(){
+			createdController.put_Bounds(winform.custom.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.custom.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+	
+	//创建控件2
+	createdEnvironment.CreateCoreWebView2Controller(winform.custom2,function(errorCode, createdController){
+		winform.custom2.adjust = function(){
+			createdController.put_Bounds(winform.custom2.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.custom2.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView2 = createdController.get_CoreWebView2();
+		
+		m_webView2.Navigate("https://cn.bing.com/");
+	})
+})
+
+
+winform.show();
+
+win.loopMessage();

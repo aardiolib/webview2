@@ -1,0 +1,52 @@
+import console;
+import win.ui;
+import webview2;
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add(
+button={cls="button";text="获取Cookie";left=575;top=344;right=731;bottom=435;z=1}
+)
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		m_webView.Navigate("https://www.baidu.com/");
+		
+		
+		winform.button.oncommand = function(id,event){
+			//获取 Cookie管理器
+			var cookieManager = m_webView.get_CookieManager();
+			
+			//异步获取 cookieList
+			cookieManager.GetCookies("https://www.baidu.com",function(error_code,cookieList){
+				var cookieCount = cookieList.get_Count();
+				for(i=1;cookieCount;1){
+					var cookie = cookieList.GetValueAtIndex(i-1);
+					console.log(cookie.get_Name(),cookie.get_Value());
+				}
+			});
+			
+			//更多内容  https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2cookiemanager
+		}
+		
+		
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();

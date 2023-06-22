@@ -1,0 +1,70 @@
+import console;
+import win.ui;
+import webview2;
+import fsys.stream;
+
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		//必须至少添加一个筛选器才能运行 WebResourceRequested 事件
+		m_webView.AddWebResourceRequestedFilter("*",0);
+
+		//添加 WebResourceRequested 事件处理程序
+		m_webView.add_WebResourceRequested(function(args){
+			console.log("WebResourceRequested",args)
+			
+			var request = args.get_Request();
+			
+			console.log(request.get_Uri())
+			
+			var resourceContext = args.get_ResourceContext();
+			
+			if(resourceContext != 3){
+				return ; 
+			}
+			
+			//用一个空的响应覆盖响应以阻止图像。
+			var response = createdEnvironment.CreateWebResourceResponse(null, 403 , "Blocked", "Content-Type: image/jpeg");
+			args.put_Response(response);
+		})
+		
+		//添加 WebResourceResponseReceived 事件处理程序
+		m_webView.add_WebResourceResponseReceived(function(args){
+			var response = args.get_Response();
+			
+			//异步获取响应内容。
+			response.GetContent(function(result, content){
+				//content 是一个 IStream 指针
+				if(content){
+					var stream = ..fsys.stream(content);
+					var data = stream.readAll();
+					console.log( #data );
+				}
+			})
+		})
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+})
+
+
+
+winform.show();
+
+win.loopMessage();
