@@ -7,13 +7,10 @@
 
 下载扩展库
 ``` shell
-npm i @aardiolib/webview2
-
-:: 复制指定扩展库到用户库
-Xcopy .\node_modules\@aardiolib\webview2\ .\lib\webview2\ /E /Y
+$ npm i @aardiolib/webview2
 ```
 
 复制指定扩展库到用户库
 ``` shell
-Xcopy .\node_modules\@aardiolib\webview2\ .\lib\webview2\ /E /Y
+$ Xcopy .\node_modules\@aardiolib\webview2\ .\lib\webview2\ /E /Y
 ```
