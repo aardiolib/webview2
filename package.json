@@ -1,15 +1,11 @@
 {
   "name": "@aardiolib/webview2",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "import": "Xcopy \".\\node_modules\\runy_webview2\\\" \".\\lib\\runy_webview2\\\" /E"
-  },
+  "description": "webview2 SDK",
   "publishConfig": {
 	  "access": "public",
 	  "registry": "https://registry.npmjs.org/"
 	},
-  "author": "",
+  "author": "Runy(2439702727@qq.com)",
   "license": "ISC"
 }

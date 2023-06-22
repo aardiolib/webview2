@@ -2,15 +2,6 @@
 import util.metaProperty;
 import fsys.version;
 
-/*
-  名称: webview2
-  作者: Runy(2439702727@qq.com)
-
-  描述:
-  这是一个 webview2 SDK, 具体用法参考示例以及 WebView2 Win32 C++(https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/)
-*/
-
-
 namespace webview2;
 
 var dll = self;
