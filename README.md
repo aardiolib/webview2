@@ -17,6 +17,7 @@ Xcopy .\node_modules\@aardiolib\webview2\ .\lib\webview2\ /E /Y
 
 ## 示例
 
+简单示例
 ```js
 import win.ui;
 import webview2;
@@ -48,3 +49,7 @@ winform.show();
 
 win.loopMessage();
 ```
+
+### 更多示例
+
+- [多开](./example/%E5%A4%9A%E5%BC%80.aardio)
