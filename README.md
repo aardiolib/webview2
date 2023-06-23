@@ -50,6 +50,4 @@ winform.show();
 win.loopMessage();
 ```
 
-### 更多示例
-
-- [多开](./example/%E5%A4%9A%E5%BC%80.aardio)
+[更多示例](./example/)
