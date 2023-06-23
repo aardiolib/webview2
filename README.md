@@ -14,3 +14,37 @@ npm i @aardiolib/webview2
 ``` bash
 Xcopy .\node_modules\@aardiolib\webview2\ .\lib\webview2\ /E /Y
 ```
+
+## 示例
+
+```js
+import win.ui;
+import webview2;
+
+/*DSG{{*/
+var winform = win.form(text="webview2 Demo";right=759;bottom=469)
+winform.add()
+/*}}*/
+
+..webview2.CreateCoreWebView2Environment(function(errorCode,createdEnvironment){
+	
+	createdEnvironment.CreateCoreWebView2Controller(winform,function(errorCode, createdController){
+		
+		winform.adjust = function(){
+			createdController.put_Bounds(winform.getClientRect());
+		}
+		
+		createdController.put_Bounds(winform.getClientRect());
+		
+		createdController.put_IsVisible(true);
+		
+		var m_webView = createdController.get_CoreWebView2();
+		
+		m_webView.Navigate("https://www.baidu.com/");
+	})
+})
+
+winform.show();
+
+win.loopMessage();
+```
