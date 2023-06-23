@@ -4,7 +4,7 @@
   "description": "webview2 SDK",
   "publishConfig": {
     "access": "public",
-	  "registry": "https://npm.pkg.github.com"
+	  "registry": "https://registry.npmjs.org"
 	},
   "author": "Runy(2439702727@qq.com)",
   "license": "ISC"
