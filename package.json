@@ -6,6 +6,10 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
+  "keywords": [
+    "aardio",
+    "webview2"
+  ],
   "author": "Runy(2439702727@qq.com)",
   "license": "ISC"
 }
