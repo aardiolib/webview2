@@ -12,7 +12,7 @@ npm i @aardiolib/webview2
 
 复制扩展库到用户库
 ``` bash
-Xcopy .\node_modules\@aardiolib\webview2\ .\lib\webview2\ /E /Y
+robocopy .\node_modules\@aardiolib\ .\lib\ /E
 ```
 
 ## 示例
@@ -49,5 +49,3 @@ winform.show();
 
 win.loopMessage();
 ```
-
-[更多示例](./example/)

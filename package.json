@@ -1,11 +1,11 @@
 {
   "name": "@aardiolib/webview2",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "webview2 SDK",
   "publishConfig": {
     "access": "public",
-	  "registry": "https://registry.npmjs.org"
-	},
+    "registry": "https://registry.npmjs.org/"
+  },
   "author": "Runy(2439702727@qq.com)",
   "license": "ISC"
 }
