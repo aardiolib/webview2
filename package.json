@@ -8,7 +8,8 @@
   },
   "keywords": [
     "aardio",
-    "webview2"
+    "webview2",
+    "aardiolib"
   ],
   "author": "Runy(2439702727@qq.com)",
   "license": "ISC"
