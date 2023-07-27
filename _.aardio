@@ -1090,7 +1090,7 @@ class ICoreWebView2{
 			..raw._release(callback);
 		},"void(int,ustring)");
 		if(type(parametersAsJson) == type.table){
-			parametersAsJson = ..web.json.tryParse(parametersAsJson);
+			parametersAsJson = ..web.json.stringify(parametersAsJson);
 		}
 		return dll.ICoreWebView2_CallDevToolsProtocolMethod(this, methodName, tostring( parametersAsJson ),callback);
 	}

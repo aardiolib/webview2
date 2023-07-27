@@ -41,7 +41,29 @@ winform.add()
 	  		});
 	  		
 		})
-
+		
+		//页面导航完毕的回调
+		m_webView.add_NavigationCompleted(function(){
+			m_webView.CallDevToolsProtocolMethod("DOM.getDocument",,function(errorCode, returnObjectAsJson){
+	  	 		var parent = web.json.parse(returnObjectAsJson);
+	  	 		var p = {
+	  	 			nodeId: parent.root.nodeId,
+	  	 			selector:"body" //使用选择器选择DOM节点
+	  	 		}
+	  	 		//查询节点信息
+	  	 		m_webView.CallDevToolsProtocolMethod("DOM.querySelector",p,function(errorCode, returnObjectAsJson){
+	  	 			//获取节点HTML
+	  	 			m_webView.CallDevToolsProtocolMethod("DOM.getOuterHTML", returnObjectAsJson,function(errorCode, returnObjectAsJson){
+	  	 				
+	  	 				console.log( returnObjectAsJson )
+	  	 				
+	  				});	
+	  			});	
+	  	 		
+	  	 		
+	  		});
+		})
+		
 		
 		m_webView.Navigate("https://www.baidu.com/");
 	})
