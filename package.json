@@ -1,6 +1,6 @@
 {
   "name": "@aardiolib/webview2",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "webview2 SDK",
   "publishConfig": {
     "access": "public",

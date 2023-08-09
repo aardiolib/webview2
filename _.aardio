@@ -1,6 +1,5 @@
 ﻿import web.json;
 import util.metaProperty;
-import fsys.version;
 
 namespace webview2;
 
@@ -27,12 +26,12 @@ var addCallback = function(token,callback){
 	return ..table.push(_callback,c);
 }
 
-var removeCallback = function(token){
-	if(_callback[token]){
-		..raw._release(_callback[token].callback);
-		var t = _callback[token].token;
-		_callback[token] = '';
-		return t;
+var removeCallback = function(index){
+	if(_callback[index]){
+		..raw._release(_callback[index].callback);
+		var token = _callback[index].token;
+		_callback[index] = '';
+		return token;
 	}
 }
 
@@ -559,6 +558,24 @@ ICoreWebView2Frame_remove_Destroyed = _dll.api("ICoreWebView2Frame_remove_Destro
 ICoreWebView2Frame_IsDestroyed = _dll.api("ICoreWebView2Frame_IsDestroyed", "bool(pointer)")
 ICoreWebView2Frame2_add_NavigationStarting = _dll.api("ICoreWebView2Frame2_add_NavigationStarting", "long(pointer,pointer)")
 ICoreWebView2Frame2_remove_NavigationStarting = _dll.api("ICoreWebView2Frame2_remove_NavigationStarting", "int(pointer,long)")
+ICoreWebView2Frame2_add_ContentLoading = _dll.api("ICoreWebView2Frame2_add_ContentLoading", "long(pointer,pointer)")
+ICoreWebView2Frame2_remove_ContentLoading = _dll.api("ICoreWebView2Frame2_remove_ContentLoading", "int(pointer,long)")
+ICoreWebView2Frame2_add_NavigationCompleted = _dll.api("ICoreWebView2Frame2_add_NavigationCompleted", "long(pointer,pointer)")
+ICoreWebView2Frame2_remove_NavigationCompleted = _dll.api("ICoreWebView2Frame2_remove_NavigationCompleted", "int(pointer,long)")
+ICoreWebView2Frame2_add_DOMContentLoaded = _dll.api("ICoreWebView2Frame2_add_DOMContentLoaded", "long(pointer,pointer)")
+ICoreWebView2Frame2_remove_DOMContentLoaded = _dll.api("ICoreWebView2Frame2_remove_DOMContentLoaded", "int(pointer,long)")
+ICoreWebView2Frame2_ExecuteScript = _dll.api("ICoreWebView2Frame2_ExecuteScript", "int(pointer,ustring,pointer)");
+ICoreWebView2Frame2_PostWebMessageAsJson = _dll.api("ICoreWebView2Frame2_PostWebMessageAsJson", "int(pointer,ustring)");
+ICoreWebView2Frame2_PostWebMessageAsString = _dll.api("ICoreWebView2Frame2_PostWebMessageAsString", "int(pointer,ustring)");
+ICoreWebView2Frame2_add_WebMessageReceived = _dll.api("ICoreWebView2Frame2_add_WebMessageReceived", "long(pointer,pointer)")
+ICoreWebView2Frame2_remove_WebMessageReceived = _dll.api("ICoreWebView2Frame2_remove_WebMessageReceived", "int(pointer,long)")
+
+ICoreWebView2Frame3_add_PermissionRequested = _dll.api("ICoreWebView2Frame3_add_PermissionRequested", "long(pointer,pointer)")
+ICoreWebView2Frame3_remove_PermissionRequested = _dll.api("ICoreWebView2Frame3_remove_PermissionRequested", "int(pointer,long)")
+
+ICoreWebView2Frame4_PostSharedBufferToScript = _dll.api("ICoreWebView2Frame4_PostSharedBufferToScript", "int(pointer,pointer,int,ustring)");
+
+
 
 /* interface ICoreWebView2ContentLoadingEventArgs */
 ICoreWebView2ContentLoadingEventArgs_Release = _dll.api("ICoreWebView2ContentLoadingEventArgs_Release", "int(pointer)")
@@ -808,9 +825,8 @@ CreateCoreWebView2EnvironmentWithOptions = function( browserExecutableFolder,use
 		}
 		..raw._release(callback);
 	},"void(int,pointer)");
-	CreateCoreWebView2EnvironmentWithOptionsW( browserExecutableFolder,userDataFolder, environmentOptions, callback );
+	CreateCoreWebView2EnvironmentWithOptionsW( browserExecutableFolder, userDataFolder, environmentOptions, callback );
 }
-
 
 CreateCoreWebView2Environment = function(func){
 	var callback;
@@ -826,13 +842,6 @@ CreateCoreWebView2Environment = function(func){
 GetAvailableCoreWebView2BrowserVersionString = GetAvailableCoreWebView2BrowserVersionStringW;
 
 CompareBrowserVersions = CompareBrowserVersionsW;
-
-CoreWebView2BrowserVersion = ..fsys.version(GetAvailableCoreWebView2BrowserVersionString());
-
-//比较版本号，用于判断运行时浏览器版本
-CompareBrowserVersion = function(version){
-	return CoreWebView2BrowserVersion >= ..fsys.version(version);
-}
 
 CreateCoreWebView2EnvironmentOptions = function(){
 	return ICoreWebView2EnvironmentOptions( CreateCoreWebView2EnvironmentOptionsW() );
@@ -856,11 +865,11 @@ class ICoreWebView2{
 	
 	
 	Release = function(){
-		return dll.ICoreWebView2_Release(this.pointer);
+		return dll.ICoreWebView2_Release(this);
 	}
 	
 	get_Settings = function(){
-		return dll.ICoreWebView2Settings(dll.ICoreWebView2_get_Settings(this.pointer));
+		return dll.ICoreWebView2Settings(dll.ICoreWebView2_get_Settings(this));
 	}
 	
 	get_Source = function(){
@@ -1567,9 +1576,6 @@ class ICoreWebView2{
 			..raw._release(callback);
 		},"void(int,int)");
 		
-		if(type(printSettings) == type.table){
-			printSettings = printSettings.pointer
-		}
 		return dll.ICoreWebView2_16_Print(this, printSettings, callback);
 	}
 	
@@ -1578,9 +1584,6 @@ class ICoreWebView2{
 	}
 	
 	PostSharedBufferToScript = function(sharedBuffer, access, additionalDataAsJson){
-		if(type(sharedBuffer) == type.table){
-			sharedBuffer = sharedBuffer.pointer;
-		}
 		return dll.ICoreWebView2_17_PostSharedBufferToScript(this, sharedBuffer, access, additionalDataAsJson);
 	}
 	
@@ -1680,6 +1683,8 @@ class ICoreWebView2Settings{
 			return null; 
 		}
 		this.pointer = pointer;
+		
+		..table.gc(this,gcRelease);
 	};
 	
 	get_IsScriptEnabled = function(){
@@ -1825,7 +1830,7 @@ class ICoreWebView2Controller{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2Controller_Release(this.pointer);
+		return dll.ICoreWebView2Controller_Release(this);
 	}
 	
 	get_IsVisible = function(){
@@ -2026,39 +2031,39 @@ class ICoreWebView2NavigationStartingEventArgs{
 	};
 	
 	get_Uri = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs_get_Uri(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs_get_Uri(this);
 	}
 	
 	get_IsUserInitiated = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs_get_IsUserInitiated(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs_get_IsUserInitiated(this);
 	}
 	
 	get_IsRedirected = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs_get_IsRedirected(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs_get_IsRedirected(this);
 	}
 	
 	get_RequestHeaders = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs_get_RequestHeaders(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs_get_RequestHeaders(this);
 	}
 	
 	get_Cancel = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs_get_Cancel(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs_get_Cancel(this);
 	}
 	
 	put_Cancel = function(cancel){
-		return dll.ICoreWebView2NavigationStartingEventArgs_put_Cancel(this.pointer,cancel);
+		return dll.ICoreWebView2NavigationStartingEventArgs_put_Cancel(this,cancel);
 	}
 	
 	get_NavigationId = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs_get_NavigationId(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs_get_NavigationId(this);
 	}
 	
 	get_AdditionalAllowedFrameAncestors = function(){
-		return dll.ICoreWebView2NavigationStartingEventArgs2_get_AdditionalAllowedFrameAncestors(this.pointer);
+		return dll.ICoreWebView2NavigationStartingEventArgs2_get_AdditionalAllowedFrameAncestors(this);
 	}
 	
 	put_AdditionalAllowedFrameAncestors = function(v){
-		return dll.ICoreWebView2NavigationStartingEventArgs2_put_AdditionalAllowedFrameAncestors(this.pointer,v);
+		return dll.ICoreWebView2NavigationStartingEventArgs2_put_AdditionalAllowedFrameAncestors(this,v);
 	}
 	
 	@..webview2._metaProperty;
@@ -2073,7 +2078,7 @@ class ICoreWebView2SourceChangedEventArgs{
 	};
 	
 	get_IsNewDocument = function(){
-		return dll.ICoreWebView2SourceChangedEventArgs_get_IsNewDocument(this.pointer);
+		return dll.ICoreWebView2SourceChangedEventArgs_get_IsNewDocument(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2088,15 +2093,15 @@ class ICoreWebView2NavigationCompletedEventArgs{
 	};
 	
 	get_IsSuccess = function(){
-		return dll.ICoreWebView2NavigationCompletedEventArgs_get_IsSuccess(this.pointer);
+		return dll.ICoreWebView2NavigationCompletedEventArgs_get_IsSuccess(this);
 	}
 	
 	get_WebErrorStatus = function(){
-		return dll.ICoreWebView2NavigationCompletedEventArgs_get_WebErrorStatus(this.pointer);
+		return dll.ICoreWebView2NavigationCompletedEventArgs_get_WebErrorStatus(this);
 	}
 	
 	get_NavigationId = function(){
-		return dll.ICoreWebView2NavigationCompletedEventArgs_get_NavigationId(this.pointer);
+		return dll.ICoreWebView2NavigationCompletedEventArgs_get_NavigationId(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2113,35 +2118,35 @@ class ICoreWebView2ScriptDialogOpeningEventArgs{
 	};
 	
 	get_Uri = function(){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_Uri(this.pointer);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_Uri(this);
 	}
 	
 	get_Kind = function(){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_Kind(this.pointer);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_Kind(this);
 	}
 	
 	get_Message = function(){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_Message(this.pointer);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_Message(this);
 	}
 	
 	Accept = function(){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_Accept(this.pointer);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_Accept(this);
 	}
 	
 	get_DefaultText = function(){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_DefaultText(this.pointer);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_DefaultText(this);
 	}
 	
 	get_ResultText = function(){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_ResultText(this.pointer);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_get_ResultText(this);
 	}
 	
 	put_ResultText = function(resultText){
-		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_put_ResultText(this.pointer,resultText);
+		return dll.ICoreWebView2ScriptDialogOpeningEventArgs_put_ResultText(this,resultText);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ScriptDialogOpeningEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ScriptDialogOpeningEventArgs_GetDeferral(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -2153,10 +2158,11 @@ class ICoreWebView2Deferral{
 			return null; 
 		}
 		this.pointer = pointer;
+		..table.gc(this,gcRelease);
 	};
 	
 	Complete = function(){
-		return dll.ICoreWebView2Deferral_Complete(this.pointer);
+		return dll.ICoreWebView2Deferral_Complete(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2171,43 +2177,43 @@ class ICoreWebView2PermissionRequestedEventArgs{
 	};
 	
 	get_Uri = function(){
-		return dll.ICoreWebView2PermissionRequestedEventArgs_get_Uri(this.pointer);
+		return dll.ICoreWebView2PermissionRequestedEventArgs_get_Uri(this);
 	}
 	
 	get_PermissionKind = function(){
-		return dll.ICoreWebView2PermissionRequestedEventArgs_get_PermissionKind(this.pointer);
+		return dll.ICoreWebView2PermissionRequestedEventArgs_get_PermissionKind(this);
 	}
 	
 	get_IsUserInitiated = function(){
-		return dll.ICoreWebView2PermissionRequestedEventArgs_get_IsUserInitiated(this.pointer);
+		return dll.ICoreWebView2PermissionRequestedEventArgs_get_IsUserInitiated(this);
 	}
 	
 	get_State = function(){
-		return dll.ICoreWebView2PermissionRequestedEventArgs_get_State(this.pointer);
+		return dll.ICoreWebView2PermissionRequestedEventArgs_get_State(this);
 	}
 	
 	put_State = function(state){
-		return dll.ICoreWebView2PermissionRequestedEventArgs_put_State(this.pointer,state);
+		return dll.ICoreWebView2PermissionRequestedEventArgs_put_State(this,state);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2PermissionRequestedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2PermissionRequestedEventArgs_GetDeferral(this) );
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2PermissionRequestedEventArgs2_get_Handled(this.pointer);
+		return dll.ICoreWebView2PermissionRequestedEventArgs2_get_Handled(this);
 	}
 	
 	put_Handled = function(handled){
-		return dll.ICoreWebView2PermissionRequestedEventArgs2_put_Handled(this.pointer,handled);
+		return dll.ICoreWebView2PermissionRequestedEventArgs2_put_Handled(this,handled);
 	}
 	
 	put_SavesInProfile = function(){
-		return dll.ICoreWebView2PermissionRequestedEventArgs3_put_SavesInProfile(this.pointer);
+		return dll.ICoreWebView2PermissionRequestedEventArgs3_put_SavesInProfile(this);
 	}
 	
 	put_SavesInProfile = function(value){
-		return dll.ICoreWebView2PermissionRequestedEventArgs3_put_SavesInProfile(this.pointer,value);
+		return dll.ICoreWebView2PermissionRequestedEventArgs3_put_SavesInProfile(this,value);
 	}
 	
 	
@@ -2223,19 +2229,19 @@ class ICoreWebView2ProcessFailedEventArgs{
 	};
 	
 	get_ProcessFailedKind = function(){
-		return dll.ICoreWebView2ProcessFailedEventArgs_get_ProcessFailedKind(this.pointer);
+		return dll.ICoreWebView2ProcessFailedEventArgs_get_ProcessFailedKind(this);
 	}
 	
 	get_Reason = function(){
-		return dll.ICoreWebView2ProcessFailedEventArgs2_get_Reason(this.pointer);
+		return dll.ICoreWebView2ProcessFailedEventArgs2_get_Reason(this);
 	}
 	
 	get_ExitCode = function(){
-		return dll.ICoreWebView2ProcessFailedEventArgs2_get_ExitCode(this.pointer);
+		return dll.ICoreWebView2ProcessFailedEventArgs2_get_ExitCode(this);
 	}
 	
 	get_ProcessDescription = function(){
-		return dll.ICoreWebView2ProcessFailedEventArgs2_get_ProcessDescription(this.pointer);
+		return dll.ICoreWebView2ProcessFailedEventArgs2_get_ProcessDescription(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2250,19 +2256,19 @@ class ICoreWebView2WebMessageReceivedEventArgs{
 	};
 	
 	get_Source = function(){
-		return dll.ICoreWebView2WebMessageReceivedEventArgs_get_Source(this.pointer);
+		return dll.ICoreWebView2WebMessageReceivedEventArgs_get_Source(this);
 	}
 	
 	get_WebMessageAsJson = function(){
-		return dll.ICoreWebView2WebMessageReceivedEventArgs_get_WebMessageAsJson(this.pointer);
+		return dll.ICoreWebView2WebMessageReceivedEventArgs_get_WebMessageAsJson(this);
 	}
 	
 	TryGetWebMessageAsString = function(){
-		return dll.ICoreWebView2WebMessageReceivedEventArgs_TryGetWebMessageAsString(this.pointer);
+		return dll.ICoreWebView2WebMessageReceivedEventArgs_TryGetWebMessageAsString(this);
 	}
 	
 	get_AdditionalObjects = function(){
-		return dll.ICoreWebView2ObjectCollectionView( dll.ICoreWebView2WebMessageReceivedEventArgs2_get_AdditionalObjects(this.pointer) );
+		return dll.ICoreWebView2ObjectCollectionView( dll.ICoreWebView2WebMessageReceivedEventArgs2_get_AdditionalObjects(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -2274,6 +2280,8 @@ class ICoreWebView2DevToolsProtocolEventReceiver{
 			return null; 
 		}
 		this.pointer = pointer;
+
+		..table.gc(this,gcRelease);
 	};
 	
 	add_DevToolsProtocolEventReceived = function(func){
@@ -2283,12 +2291,12 @@ class ICoreWebView2DevToolsProtocolEventReceiver{
 			}
 		},"void(pointer)");
 	
-		var token = dll.ICoreWebView2DevToolsProtocolEventReceiver_add_DevToolsProtocolEventReceived(this.pointer, callback);
+		var token = dll.ICoreWebView2DevToolsProtocolEventReceiver_add_DevToolsProtocolEventReceived(this, callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_DevToolsProtocolEventReceived = function(token){
-		return dll.ICoreWebView2DevToolsProtocolEventReceiver_remove_DevToolsProtocolEventReceived(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2DevToolsProtocolEventReceiver_remove_DevToolsProtocolEventReceived(this, removeCallback(token));
 	}
 	
 	@..webview2._metaProperty;
@@ -2304,7 +2312,7 @@ class ICoreWebView2DevToolsProtocolEventReceivedEventArgs{
 	
 	
 	get_ParameterObjectAsJson = function(){
-		return dll.ICoreWebView2DevToolsProtocolEventReceivedEventArgs_get_ParameterObjectAsJson(this.pointer);
+		return dll.ICoreWebView2DevToolsProtocolEventReceivedEventArgs_get_ParameterObjectAsJson(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2319,42 +2327,42 @@ class ICoreWebView2NewWindowRequestedEventArgs{
 	};
 	
 	get_Uri = function(){
-		return dll.ICoreWebView2NewWindowRequestedEventArgs_get_Uri(this.pointer);
+		return dll.ICoreWebView2NewWindowRequestedEventArgs_get_Uri(this);
 	}
 	
 	put_NewWindow = function(newWindow){
 		if(type(newWindow) == type.table){
 			newWindow = newWindow.pointer;
 		}
-		return dll.ICoreWebView2NewWindowRequestedEventArgs_put_NewWindow(this.pointer,newWindow);
+		return dll.ICoreWebView2NewWindowRequestedEventArgs_put_NewWindow(this,newWindow);
 	}
 	
 	get_NewWindow = function(){
-		return dll.ICoreWebView2( dll.ICoreWebView2NewWindowRequestedEventArgs_get_NewWindow(this.pointer) );
+		return dll.ICoreWebView2( dll.ICoreWebView2NewWindowRequestedEventArgs_get_NewWindow(this) );
 	}
 	
 	put_Handled = function(handled){
-		return dll.ICoreWebView2NewWindowRequestedEventArgs_put_Handled(this.pointer,handled);
+		return dll.ICoreWebView2NewWindowRequestedEventArgs_put_Handled(this,handled);
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2NewWindowRequestedEventArgs_get_Handled(this.pointer);
+		return dll.ICoreWebView2NewWindowRequestedEventArgs_get_Handled(this);
 	}
 	
 	get_IsUserInitiated = function(){
-		return dll.ICoreWebView2NewWindowRequestedEventArgs_get_IsUserInitiated(this.pointer);
+		return dll.ICoreWebView2NewWindowRequestedEventArgs_get_IsUserInitiated(this);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2NewWindowRequestedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2NewWindowRequestedEventArgs_GetDeferral(this) );
 	}
 	
 	get_WindowFeatures = function(){
-		return dll.ICoreWebView2WindowFeatures( dll.ICoreWebView2NewWindowRequestedEventArgs_get_WindowFeatures(this.pointer) );
+		return dll.ICoreWebView2WindowFeatures( dll.ICoreWebView2NewWindowRequestedEventArgs_get_WindowFeatures(this) );
 	}
 	
 	get_Name = function(){
-		return dll.ICoreWebView2NewWindowRequestedEventArgs2_get_Name(this.pointer);
+		return dll.ICoreWebView2NewWindowRequestedEventArgs2_get_Name(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2370,31 +2378,31 @@ class ICoreWebView2WebResourceRequestedEventArgs{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2WebResourceRequestedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2WebResourceRequestedEventArgs_Release(this);
 	}
 	
 	
 	get_Request = function(){
-		return dll.ICoreWebView2WebResourceRequest( dll.ICoreWebView2WebResourceRequestedEventArgs_get_Request(this.pointer) );
+		return dll.ICoreWebView2WebResourceRequest( dll.ICoreWebView2WebResourceRequestedEventArgs_get_Request(this) );
 	}
 	
 	get_Response = function(){
-		return dll.ICoreWebView2WebResourceResponse( dll.ICoreWebView2WebResourceRequestedEventArgs_get_Response(this.pointer) );
+		return dll.ICoreWebView2WebResourceResponse( dll.ICoreWebView2WebResourceRequestedEventArgs_get_Response(this) );
 	}
 	
 	put_Response = function(response){
 		if(type(response) == type.table){
 			response = response.pointer;
 		}
-		return dll.ICoreWebView2WebResourceRequestedEventArgs_put_Response(this.pointer,response);
+		return dll.ICoreWebView2WebResourceRequestedEventArgs_put_Response(this,response);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2WebResourceRequestedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2WebResourceRequestedEventArgs_GetDeferral(this) );
 	}
 	
 	get_ResourceContext = function(){
-		return dll.ICoreWebView2WebResourceRequestedEventArgs_get_ResourceContext(this.pointer);
+		return dll.ICoreWebView2WebResourceRequestedEventArgs_get_ResourceContext(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2411,35 +2419,35 @@ class ICoreWebView2WebResourceRequest{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2WebResourceRequest_Release(this.pointer);
+		return dll.ICoreWebView2WebResourceRequest_Release(this);
 	}
 	
 	get_Uri = function(){
-		return dll.ICoreWebView2WebResourceRequest_get_Uri(this.pointer);
+		return dll.ICoreWebView2WebResourceRequest_get_Uri(this);
 	}
 	
 	put_Uri = function(uri){
-		return dll.ICoreWebView2WebResourceRequest_put_Uri(this.pointer,uri);
+		return dll.ICoreWebView2WebResourceRequest_put_Uri(this,uri);
 	}
 	
 	get_Method = function(){
-		return dll.ICoreWebView2WebResourceRequest_get_Method(this.pointer);
+		return dll.ICoreWebView2WebResourceRequest_get_Method(this);
 	}
 	
 	put_Method = function(method){
-		return dll.ICoreWebView2WebResourceRequest_put_Method(this.pointer,method);
+		return dll.ICoreWebView2WebResourceRequest_put_Method(this,method);
 	}
 	
 	get_Content = function(){
-		return dll.ICoreWebView2WebResourceRequest_get_Content(this.pointer);
+		return dll.ICoreWebView2WebResourceRequest_get_Content(this);
 	}
 	
 	put_Content = function(content){
-		return dll.ICoreWebView2WebResourceRequest_put_Content(this.pointer,content);
+		return dll.ICoreWebView2WebResourceRequest_put_Content(this,content);
 	}
 	
 	get_Headers = function(content){
-		return dll.ICoreWebView2HttpRequestHeaders( dll.ICoreWebView2WebResourceRequest_get_Headers(this.pointer,content) );
+		return dll.ICoreWebView2HttpRequestHeaders( dll.ICoreWebView2WebResourceRequest_get_Headers(this,content) );
 	}
 	
 	@..webview2._metaProperty;
@@ -2451,32 +2459,32 @@ class ICoreWebView2HttpRequestHeaders{
 			return null; 
 		}
 		this.pointer = pointer;
-		
-		//..table.gc(this,gcRelease);
+
+		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2HttpRequestHeaders_Release(this.pointer);
+		return dll.ICoreWebView2HttpRequestHeaders_Release(this);
 	}
 	
 	GetHeader = function(name){
-		return dll.ICoreWebView2HttpRequestHeaders_GetHeader(this.pointer,name);
+		return dll.ICoreWebView2HttpRequestHeaders_GetHeader(this,name);
 	}
 	
 	GetHeaders = function(name){
-		return dll.ICoreWebView2HttpRequestHeaders_GetHeaders(this.pointer,name);
+		return dll.ICoreWebView2HttpRequestHeaders_GetHeaders(this,name);
 	}
 	
 	Contains = function(name){
-		return dll.ICoreWebView2HttpRequestHeaders_Contains(this.pointer,name);
+		return dll.ICoreWebView2HttpRequestHeaders_Contains(this,name);
 	}
 	
 	SetHeader = function(name,value){
-		return dll.ICoreWebView2HttpRequestHeaders_SetHeader(this.pointer,name,value);
+		return dll.ICoreWebView2HttpRequestHeaders_SetHeader(this,name,value);
 	}
 	
 	RemoveHeader = function(name){
-		return dll.ICoreWebView2HttpRequestHeaders_RemoveHeader(this.pointer,name);
+		return dll.ICoreWebView2HttpRequestHeaders_RemoveHeader(this,name);
 	}
 	
 	@..webview2._metaProperty;
@@ -2494,31 +2502,31 @@ class ICoreWebView2WebResourceResponse{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2WebResourceResponse_Release(this.pointer);
+		return dll.ICoreWebView2WebResourceResponse_Release(this);
 	}
 	
 	get_Content = function(){
-		return dll.ICoreWebView2WebResourceResponse_get_Content(this.pointer);
+		return dll.ICoreWebView2WebResourceResponse_get_Content(this);
 	}
 	
 	get_Headers = function(){
-		return dll.ICoreWebView2WebResourceResponse_get_Headers(this.pointer);
+		return dll.ICoreWebView2WebResourceResponse_get_Headers(this);
 	}
 	
 	get_StatusCode = function(){
-		return dll.ICoreWebView2WebResourceResponse_get_StatusCode(this.pointer);
+		return dll.ICoreWebView2WebResourceResponse_get_StatusCode(this);
 	}
 	
 	put_StatusCode = function(statusCode){
-		return dll.ICoreWebView2WebResourceResponse_put_StatusCode(this.pointer,statusCode);
+		return dll.ICoreWebView2WebResourceResponse_put_StatusCode(this,statusCode);
 	}
 	
 	get_ReasonPhrase = function(){
-		return dll.ICoreWebView2WebResourceResponse_get_ReasonPhrase(this.pointer);
+		return dll.ICoreWebView2WebResourceResponse_get_ReasonPhrase(this);
 	}
 	
 	put_ReasonPhrase = function(reasonPhrase){
-		return dll.ICoreWebView2WebResourceResponse_put_ReasonPhrase(this.pointer,reasonPhrase);
+		return dll.ICoreWebView2WebResourceResponse_put_ReasonPhrase(this,reasonPhrase);
 	}
 	
 	@..webview2._metaProperty;
@@ -2530,20 +2538,18 @@ class ICoreWebView2WebResourceResponseReceivedEventArgs{
 			return null; 
 		}
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2WebResourceResponseReceivedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2WebResourceResponseReceivedEventArgs_Release(this);
 	}
 	
 	get_Request = function(){
-		return dll.ICoreWebView2WebResourceRequest( dll.ICoreWebView2WebResourceResponseReceivedEventArgs_get_Request(this.pointer) );
+		return dll.ICoreWebView2WebResourceRequest( dll.ICoreWebView2WebResourceResponseReceivedEventArgs_get_Request(this) );
 	}
 	
 	get_Response = function(){
-		return dll.ICoreWebView2WebResourceResponseView( dll.ICoreWebView2WebResourceResponseReceivedEventArgs_get_Response(this.pointer) );
+		return dll.ICoreWebView2WebResourceResponseView( dll.ICoreWebView2WebResourceResponseReceivedEventArgs_get_Response(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -2560,19 +2566,19 @@ class ICoreWebView2WebResourceResponseView{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2WebResourceResponseView_Release(this.pointer);
+		return dll.ICoreWebView2WebResourceResponseView_Release(this);
 	}
 	
 	get_Headers = function(){
-		return dll.ICoreWebView2HttpResponseHeaders( dll.ICoreWebView2WebResourceResponseView_get_Headers(this.pointer) );
+		return dll.ICoreWebView2HttpResponseHeaders( dll.ICoreWebView2WebResourceResponseView_get_Headers(this) );
 	}
 	
 	get_StatusCode = function(){
-		return dll.ICoreWebView2WebResourceResponseView_get_StatusCode(this.pointer);
+		return dll.ICoreWebView2WebResourceResponseView_get_StatusCode(this);
 	}
 	
 	get_ReasonPhrase = function(){
-		return dll.ICoreWebView2WebResourceResponseView_get_ReasonPhrase(this.pointer);
+		return dll.ICoreWebView2WebResourceResponseView_get_ReasonPhrase(this);
 	}
 	
 	GetContent = function(func){
@@ -2583,7 +2589,7 @@ class ICoreWebView2WebResourceResponseView{
 			}
 			..raw._release(callback);
 		},"void(int,pointer)");
-		return dll.ICoreWebView2WebResourceResponseView_GetContent(this.pointer, callback);
+		return dll.ICoreWebView2WebResourceResponseView_GetContent(this, callback);
 	}
 	
 	@..webview2._metaProperty;
@@ -2598,16 +2604,14 @@ class ICoreWebView2DOMContentLoadedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2DOMContentLoadedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2DOMContentLoadedEventArgs_Release(this);
 	}
 	
 	get_NavigationId = function(){
-		return dll.ICoreWebView2DOMContentLoadedEventArgs_get_NavigationId(this.pointer);
+		return dll.ICoreWebView2DOMContentLoadedEventArgs_get_NavigationId(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2621,68 +2625,68 @@ class ICoreWebView2EnvironmentOptions{
 		}
 		
 		this.pointer = pointer;
-		
+
 		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2EnvironmentOptions_Release(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions_Release(this);
 	}
 	
 	get_AdditionalBrowserArguments = function(){
-		return dll.ICoreWebView2EnvironmentOptions_get_AdditionalBrowserArguments(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions_get_AdditionalBrowserArguments(this);
 	}
 	
 	put_AdditionalBrowserArguments = function(value){
-		return dll.ICoreWebView2EnvironmentOptions_put_AdditionalBrowserArguments(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions_put_AdditionalBrowserArguments(this,value);
 	}
 	
 	get_Language = function(){
-		return dll.ICoreWebView2EnvironmentOptions_get_Language(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions_get_Language(this);
 	}
 	
 	put_Language = function(value){
-		return dll.ICoreWebView2EnvironmentOptions_put_Language(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions_put_Language(this,value);
 	}
 	
 	get_TargetCompatibleBrowserVersion = function(){
-		return dll.ICoreWebView2EnvironmentOptions_get_TargetCompatibleBrowserVersion(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions_get_TargetCompatibleBrowserVersion(this);
 	}
 	
 	put_TargetCompatibleBrowserVersion = function(value){
-		return dll.ICoreWebView2EnvironmentOptions_put_TargetCompatibleBrowserVersion(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions_put_TargetCompatibleBrowserVersion(this,value);
 	}
 	
 	get_AllowSingleSignOnUsingOSPrimaryAccount = function(){
-		return dll.ICoreWebView2EnvironmentOptions_get_AllowSingleSignOnUsingOSPrimaryAccount(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions_get_AllowSingleSignOnUsingOSPrimaryAccount(this);
 	}
 	
 	put_AllowSingleSignOnUsingOSPrimaryAccount = function(value){
-		return dll.ICoreWebView2EnvironmentOptions_put_AllowSingleSignOnUsingOSPrimaryAccount(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions_put_AllowSingleSignOnUsingOSPrimaryAccount(this,value);
 	}
 	
 	get_ExclusiveUserDataFolderAccess = function(){
-		return dll.ICoreWebView2EnvironmentOptions2_get_ExclusiveUserDataFolderAccess(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions2_get_ExclusiveUserDataFolderAccess(this);
 	}
 	
 	put_ExclusiveUserDataFolderAccess = function(value){
-		return dll.ICoreWebView2EnvironmentOptions2_put_ExclusiveUserDataFolderAccess(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions2_put_ExclusiveUserDataFolderAccess(this,value);
 	}
 	
 	get_IsCustomCrashReportingEnabled = function(){
-		return dll.ICoreWebView2EnvironmentOptions3_get_IsCustomCrashReportingEnabled(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions3_get_IsCustomCrashReportingEnabled(this);
 	}
 	
 	put_IsCustomCrashReportingEnabled = function(value){
-		return dll.ICoreWebView2EnvironmentOptions3_put_IsCustomCrashReportingEnabled(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions3_put_IsCustomCrashReportingEnabled(this,value);
 	}
 		
 	get_EnableTrackingPrevention = function(){
-		return dll.ICoreWebView2EnvironmentOptions5_get_EnableTrackingPrevention(this.pointer);
+		return dll.ICoreWebView2EnvironmentOptions5_get_EnableTrackingPrevention(this);
 	}
 	
 	put_EnableTrackingPrevention = function(value){
-		return dll.ICoreWebView2EnvironmentOptions5_put_EnableTrackingPrevention(this.pointer,value);
+		return dll.ICoreWebView2EnvironmentOptions5_put_EnableTrackingPrevention(this,value);
 	}
 	
 	@..webview2._metaProperty;
@@ -2695,24 +2699,22 @@ class ICoreWebView2MoveFocusRequestedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2MoveFocusRequestedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2MoveFocusRequestedEventArgs_Release(this);
 	}
 	
 	get_Reason = function(){
-		return dll.ICoreWebView2MoveFocusRequestedEventArgs_get_Reason(this.pointer);
+		return dll.ICoreWebView2MoveFocusRequestedEventArgs_get_Reason(this);
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2MoveFocusRequestedEventArgs_get_Handled(this.pointer);
+		return dll.ICoreWebView2MoveFocusRequestedEventArgs_get_Handled(this);
 	}
 	
 	put_Handled = function(value){
-		return dll.ICoreWebView2MoveFocusRequestedEventArgs_put_Handled(this.pointer,value);
+		return dll.ICoreWebView2MoveFocusRequestedEventArgs_put_Handled(this,value);
 	}
 	
 	@..webview2._metaProperty;
@@ -2726,36 +2728,34 @@ class ICoreWebView2AcceleratorKeyPressedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_Release(this);
 	}
 	
 	get_KeyEventKind = function(){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_KeyEventKind(this.pointer);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_KeyEventKind(this);
 	}
 	
 	get_VirtualKey = function(){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_VirtualKey(this.pointer);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_VirtualKey(this);
 	}
 	
 	get_KeyEventLParam = function(){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_KeyEventLParam(this.pointer);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_KeyEventLParam(this);
 	}
 	
 	get_PhysicalKeyStatus = function(){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_PhysicalKeyStatus(this.pointer);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_PhysicalKeyStatus(this);
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_Handled(this.pointer);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_get_Handled(this);
 	}
 	
 	put_Handled = function(handled){
-		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_put_Handled(this.pointer,handled);
+		return dll.ICoreWebView2AcceleratorKeyPressedEventArgs_put_Handled(this,handled);
 	}
 	
 	@..webview2._metaProperty;
@@ -2773,11 +2773,11 @@ class ICoreWebView2CookieManager{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2CookieManager_Release(this.pointer);
+		return dll.ICoreWebView2CookieManager_Release(this);
 	}
 	
 	CreateCookie = function(name, value, domain, path){
-		return dll.ICoreWebView2Cookie( dll.ICoreWebView2CookieManager_CreateCookie(this.pointer,name, value, domain, path) );
+		return dll.ICoreWebView2Cookie( dll.ICoreWebView2CookieManager_CreateCookie(this,name, value, domain, path) );
 	}
 		
 	GetCookies = function(uri,func){
@@ -2788,33 +2788,33 @@ class ICoreWebView2CookieManager{
 				..raw._release(callback);
 			}
 		},"void(int,pointer)",this);
-		return dll.ICoreWebView2CookieManager_GetCookies(this.pointer, uri, callback);
+		return dll.ICoreWebView2CookieManager_GetCookies(this, uri, callback);
 	}
 	
 	AddOrUpdateCookie = function(cookie){
 		if(type(cookie) == type.table){
 			cookie = cookie.pointer
 		}
-		return dll.ICoreWebView2CookieManager_AddOrUpdateCookie(this.pointer,cookie);
+		return dll.ICoreWebView2CookieManager_AddOrUpdateCookie(this,cookie);
 	}
 	
 	DeleteCookie = function(cookie){
 		if(type(cookie) == type.table){
 			cookie = cookie.pointer
 		}
-		return dll.ICoreWebView2CookieManager_DeleteCookie(this.pointer,cookie);
+		return dll.ICoreWebView2CookieManager_DeleteCookie(this,cookie);
 	}
 	
 	DeleteCookies = function(name, uri){
-		return dll.ICoreWebView2CookieManager_DeleteCookies(this.pointer,name, uri);
+		return dll.ICoreWebView2CookieManager_DeleteCookies(this,name, uri);
 	}
 	
 	DeleteCookiesWithDomainAndPath = function(name, domain, path){
-		return dll.ICoreWebView2CookieManager_DeleteCookiesWithDomainAndPath(this.pointer, name, domain, path);
+		return dll.ICoreWebView2CookieManager_DeleteCookiesWithDomainAndPath(this, name, domain, path);
 	}
 	
 	DeleteAllCookies = function(){
-		return dll.ICoreWebView2CookieManager_DeleteAllCookies(this.pointer);
+		return dll.ICoreWebView2CookieManager_DeleteAllCookies(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2832,15 +2832,15 @@ class ICoreWebView2CookieList{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2CookieList_Release(this.pointer);
+		return dll.ICoreWebView2CookieList_Release(this);
 	}
 	
 	get_Count = function(){
-		return dll.ICoreWebView2CookieList_get_Count(this.pointer);
+		return dll.ICoreWebView2CookieList_get_Count(this);
 	}
 	
 	GetValueAtIndex = function(index){
-		return dll.ICoreWebView2Cookie( dll.ICoreWebView2CookieList_GetValueAtIndex(this.pointer, index) );
+		return dll.ICoreWebView2Cookie( dll.ICoreWebView2CookieList_GetValueAtIndex(this, index) );
 	}
 	
 	@..webview2._metaProperty;
@@ -2858,64 +2858,64 @@ class ICoreWebView2Cookie{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2Cookie_Release(this.pointer);
+		return dll.ICoreWebView2Cookie_Release(this);
 	}
 	
 	get_Name = function(){
-		return dll.ICoreWebView2Cookie_get_Name(this.pointer);
+		return dll.ICoreWebView2Cookie_get_Name(this);
 	}
 	
 	get_Value = function(){
-		return dll.ICoreWebView2Cookie_get_Value(this.pointer);
+		return dll.ICoreWebView2Cookie_get_Value(this);
 	}
 	
 	put_Value = function(value){
-		return dll.ICoreWebView2Cookie_put_Value(this.pointer,value);
+		return dll.ICoreWebView2Cookie_put_Value(this,value);
 	}
 	
 	get_Domain = function(){
-		return dll.ICoreWebView2Cookie_get_Domain(this.pointer);
+		return dll.ICoreWebView2Cookie_get_Domain(this);
 	}
 	
 	get_Path = function(){
-		return dll.ICoreWebView2Cookie_get_Path(this.pointer);
+		return dll.ICoreWebView2Cookie_get_Path(this);
 	}
 	
 	get_Expires = function(){
-		return dll.ICoreWebView2Cookie_get_Expires(this.pointer);
+		return dll.ICoreWebView2Cookie_get_Expires(this);
 	}
 	
 	put_Expires = function(expires){
-		return dll.ICoreWebView2Cookie_put_Expires(this.pointer,expires);
+		return dll.ICoreWebView2Cookie_put_Expires(this,expires);
 	}
 	
 		
 	get_IsHttpOnly = function(){
-		return dll.ICoreWebView2Cookie_get_IsHttpOnly(this.pointer);
+		return dll.ICoreWebView2Cookie_get_IsHttpOnly(this);
 	}
 	
 	IsHttpOnly = function(isHttpOnly){
-		return dll.ICoreWebView2Cookie_put_IsHttpOnly(this.pointer,isHttpOnly);
+		return dll.ICoreWebView2Cookie_put_IsHttpOnly(this,isHttpOnly);
 	}
 	
 	get_SameSite = function(){
-		return dll.ICoreWebView2Cookie_get_SameSite(this.pointer);
+		return dll.ICoreWebView2Cookie_get_SameSite(this);
 	}
 	
 	put_SameSite = function(sameSite){
-		return dll.ICoreWebView2Cookie_put_SameSite(this.pointer,sameSite);
+		return dll.ICoreWebView2Cookie_put_SameSite(this,sameSite);
 	}
 	
 	get_IsSecure = function(){
-		return dll.ICoreWebView2Cookie_get_IsSecure(this.pointer);
+		return dll.ICoreWebView2Cookie_get_IsSecure(this);
 	}
 	
 	put_IsSecure = function(isSecure){
-		return dll.ICoreWebView2Cookie_put_IsSecure(this.pointer,isSecure);
+		return dll.ICoreWebView2Cookie_put_IsSecure(this,isSecure);
 	}
 	
 	get_IsSession = function(){
-		return dll.ICoreWebView2Cookie_get_IsSession(this.pointer);
+		return dll.ICoreWebView2Cookie_get_IsSession(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -2933,192 +2933,192 @@ class ICoreWebView2PrintSettings{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2PrintSettings_Release(this.pointer);
+		return dll.ICoreWebView2PrintSettings_Release(this);
 	}
 	
 	get_Orientation = function(){
-		return dll.ICoreWebView2PrintSettings_get_Orientation(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_Orientation(this);
 	}
 	
 	put_Orientation = function(orientation){
-		return dll.ICoreWebView2PrintSettings_put_Orientation(this.pointer, orientation);
+		return dll.ICoreWebView2PrintSettings_put_Orientation(this, orientation);
 	}
 	
 	get_ScaleFactor = function(){
-		return dll.ICoreWebView2PrintSettings_get_ScaleFactor(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_ScaleFactor(this);
 	}
 	
 	put_ScaleFactor = function(scaleFactor){
-		return dll.ICoreWebView2PrintSettings_put_ScaleFactor(this.pointer, scaleFactor);
+		return dll.ICoreWebView2PrintSettings_put_ScaleFactor(this, scaleFactor);
 	}
 	
 	get_PageWidth = function(){
-		return dll.ICoreWebView2PrintSettings_get_PageWidth(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_PageWidth(this);
 	}
 	
 	put_PageWidth = function(pageWidth){
-		return dll.ICoreWebView2PrintSettings_put_PageWidth(this.pointer, pageWidth);
+		return dll.ICoreWebView2PrintSettings_put_PageWidth(this, pageWidth);
 	}
 	
 	get_PageHeight = function(){
-		return dll.ICoreWebView2PrintSettings_get_PageHeight(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_PageHeight(this);
 	}
 	
 	put_PageHeight = function(pageHeight){
-		return dll.ICoreWebView2PrintSettings_put_PageHeight(this.pointer, pageHeight);
+		return dll.ICoreWebView2PrintSettings_put_PageHeight(this, pageHeight);
 	}
 	
 	get_MarginTop = function(){
-		return dll.ICoreWebView2PrintSettings_get_MarginTop(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_MarginTop(this);
 	}
 	
 	put_MarginTop = function(marginTop){
-		return dll.ICoreWebView2PrintSettings_put_MarginTop(this.pointer, marginTop);
+		return dll.ICoreWebView2PrintSettings_put_MarginTop(this, marginTop);
 	}
 		
 	get_MarginBottom = function(){
-		return dll.ICoreWebView2PrintSettings_get_MarginBottom(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_MarginBottom(this);
 	}
 	
 	put_MarginBottom = function(marginBottom){
-		return dll.ICoreWebView2PrintSettings_put_MarginBottom(this.pointer, marginBottom);
+		return dll.ICoreWebView2PrintSettings_put_MarginBottom(this, marginBottom);
 	}
 	
 	get_MarginLeft = function(){
-		return dll.ICoreWebView2PrintSettings_get_MarginLeft(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_MarginLeft(this);
 	}
 	
 	put_MarginLeft = function(marginLeft){
-		return dll.ICoreWebView2PrintSettings_put_MarginLeft(this.pointer, marginLeft);
+		return dll.ICoreWebView2PrintSettings_put_MarginLeft(this, marginLeft);
 	}
 	
 	get_MarginRight = function(){
-		return dll.ICoreWebView2PrintSettings_get_MarginRight(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_MarginRight(this);
 	}
 	
 	put_MarginRight = function(marginRight){
-		return dll.ICoreWebView2PrintSettings_put_MarginRight(this.pointer, marginRight);
+		return dll.ICoreWebView2PrintSettings_put_MarginRight(this, marginRight);
 	}
 	
 	get_ShouldPrintBackgrounds = function(){
-		return dll.ICoreWebView2PrintSettings_get_ShouldPrintBackgrounds(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_ShouldPrintBackgrounds(this);
 	}
 	
 	put_ShouldPrintBackgrounds = function(shouldPrintBackgrounds){
-		return dll.ICoreWebView2PrintSettings_put_ShouldPrintBackgrounds(this.pointer, shouldPrintBackgrounds);
+		return dll.ICoreWebView2PrintSettings_put_ShouldPrintBackgrounds(this, shouldPrintBackgrounds);
 	}
 	
 	get_ShouldPrintSelectionOnly = function(){
-		return dll.ICoreWebView2PrintSettings_get_ShouldPrintSelectionOnly(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_ShouldPrintSelectionOnly(this);
 	}
 	
 	put_ShouldPrintSelectionOnly = function(shouldPrintSelectionOnly){
-		return dll.ICoreWebView2PrintSettings_put_ShouldPrintSelectionOnly(this.pointer, shouldPrintSelectionOnly);
+		return dll.ICoreWebView2PrintSettings_put_ShouldPrintSelectionOnly(this, shouldPrintSelectionOnly);
 	}
 	
 	get_ShouldPrintHeaderAndFooter = function(){
-		return dll.ICoreWebView2PrintSettings_get_ShouldPrintHeaderAndFooter(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_ShouldPrintHeaderAndFooter(this);
 	}
 	
 	put_ShouldPrintHeaderAndFooter = function(shouldPrintHeaderAndFooter){
-		return dll.ICoreWebView2PrintSettings_put_ShouldPrintHeaderAndFooter(this.pointer, shouldPrintHeaderAndFooter);
+		return dll.ICoreWebView2PrintSettings_put_ShouldPrintHeaderAndFooter(this, shouldPrintHeaderAndFooter);
 	}
 	
 	get_HeaderTitle = function(){
-		return dll.ICoreWebView2PrintSettings_get_HeaderTitle(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_HeaderTitle(this);
 	}
 	
 	put_HeaderTitle = function(headerTitle){
-		return dll.ICoreWebView2PrintSettings_put_HeaderTitle(this.pointer, headerTitle);
+		return dll.ICoreWebView2PrintSettings_put_HeaderTitle(this, headerTitle);
 	}
 		
 	get_FooterUri = function(){
-		return dll.ICoreWebView2PrintSettings_get_FooterUri(this.pointer);
+		return dll.ICoreWebView2PrintSettings_get_FooterUri(this);
 	}
 	
 	put_FooterUri = function(footerUri){
-		return dll.ICoreWebView2PrintSettings_put_FooterUri(this.pointer, footerUri);
+		return dll.ICoreWebView2PrintSettings_put_FooterUri(this, footerUri);
 	}
 	
 	
 	get_PageRanges = function(){
-		return dll.ICoreWebView2PrintSettings2_get_PageRanges(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_PageRanges(this);
 	}
 	
 	put_PageRanges = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_PageRanges(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_PageRanges(this, value);
 	}
 	
 	get_PagesPerSide = function(){
-		return dll.ICoreWebView2PrintSettings2_get_PagesPerSide(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_PagesPerSide(this);
 	}
 	
 	put_PagesPerSide = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_PagesPerSide(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_PagesPerSide(this, value);
 	}
 	
 	get_PageRanges = function(){
-		return dll.ICoreWebView2PrintSettings2_get_PageRanges(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_PageRanges(this);
 	}
 	
 	put_PageRanges = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_PageRanges(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_PageRanges(this, value);
 	}
 	
 	get_PagesPerSide = function(){
-		return dll.ICoreWebView2PrintSettings2_get_PagesPerSide(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_PagesPerSide(this);
 	}
 	
 	put_PagesPerSide = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_PagesPerSide(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_PagesPerSide(this, value);
 	}
 	
 	get_Copies = function(){
-		return dll.ICoreWebView2PrintSettings2_get_Copies(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_Copies(this);
 	}
 	
 	put_Copies = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_Copies(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_Copies(this, value);
 	}
 	
 	get_Collation = function(){
-		return dll.ICoreWebView2PrintSettings2_get_Collation(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_Collation(this);
 	}
 	
 	put_Collation = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_Collation(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_Collation(this, value);
 	}
 	
 	get_ColorMode = function(){
-		return dll.ICoreWebView2PrintSettings2_get_ColorMode(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_ColorMode(this);
 	}
 	
 	put_ColorMode = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_ColorMode(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_ColorMode(this, value);
 	}
 	
 	get_Duplex = function(){
-		return dll.ICoreWebView2PrintSettings2_get_Duplex(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_Duplex(this);
 	}
 	
 	put_Duplex = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_Duplex(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_Duplex(this, value);
 	}
 	
 	get_MediaSize = function(){
-		return dll.ICoreWebView2PrintSettings2_get_MediaSize(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_MediaSize(this);
 	}
 	
 	put_MediaSize = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_MediaSize(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_MediaSize(this, value);
 	}
 	
 	get_PrinterName = function(){
-		return dll.ICoreWebView2PrintSettings2_get_PrinterName(this.pointer);
+		return dll.ICoreWebView2PrintSettings2_get_PrinterName(this);
 	}
 	
 	put_PrinterName = function(value){
-		return dll.ICoreWebView2PrintSettings2_put_PrinterName(this.pointer, value);
+		return dll.ICoreWebView2PrintSettings2_put_PrinterName(this, value);
 	}
 	
 	@..webview2._metaProperty;
@@ -3132,16 +3132,14 @@ class ICoreWebView2FrameCreatedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2FrameCreatedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2FrameCreatedEventArgs_Release(this);
 	}
 	
 	get_Frame = function(){
-		return dll.ICoreWebView2Frame( dll.ICoreWebView2FrameCreatedEventArgs_get_Frame(this.pointer) );
+		return dll.ICoreWebView2Frame( dll.ICoreWebView2FrameCreatedEventArgs_get_Frame(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -3159,11 +3157,11 @@ class ICoreWebView2Frame{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2Frame_Release(this.pointer);
+		return dll.ICoreWebView2Frame_Release(this);
 	}
 	
 	get_Name = function(){
-		return dll.ICoreWebView2Frame_get_Name(this.pointer);
+		return dll.ICoreWebView2Frame_get_Name(this);
 	}
 	
 	add_NameChanged = function(func){
@@ -3172,12 +3170,12 @@ class ICoreWebView2Frame{
 				func();
 			}
 		},"void()");
-		var token = dll.ICoreWebView2Frame_add_NameChanged(this.pointer,callback);
+		var token = dll.ICoreWebView2Frame_add_NameChanged(this,callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_NameChanged = function(token){
-		return dll.ICoreWebView2Frame_remove_NameChanged(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2Frame_remove_NameChanged(this, removeCallback(token));
 	}
 	
 	AddHostObjectToScriptWithOrigins = function(name, object, originsCount,origins){
@@ -3190,13 +3188,13 @@ class ICoreWebView2Frame{
 			}	
 		} 
 		var v = ..com.Variant(object);
-		var r = dll.ICoreWebView2Frame_AddHostObjectToScriptWithOrigins(this.pointer,name,v,originsCount,origins);
+		var r = dll.ICoreWebView2Frame_AddHostObjectToScriptWithOrigins(this,name,v,originsCount,origins);
 		..com.Release(v);
 		return r; 
 	}
 	
 	RemoveHostObjectFromScript = function(name){
-		return dll.ICoreWebView2Frame_RemoveHostObjectFromScript(this.pointer, name);
+		return dll.ICoreWebView2Frame_RemoveHostObjectFromScript(this, name);
 	}
 	
 	add_Destroyed = function(func){
@@ -3205,16 +3203,16 @@ class ICoreWebView2Frame{
 				func();
 			}
 		},"void()");
-		var token = dll.ICoreWebView2Frame_add_Destroyed(this.pointer,callback);
+		var token = dll.ICoreWebView2Frame_add_Destroyed(this,callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_Destroyed = function(token){
-		return dll.ICoreWebView2Frame_remove_Destroyed(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2Frame_remove_Destroyed(this, removeCallback(token));
 	}
 	
 	IsDestroyed = function(){
-		return dll.ICoreWebView2Frame_IsDestroyed(this.pointer);
+		return dll.ICoreWebView2Frame_IsDestroyed(this);
 	}
 	
 	
@@ -3224,13 +3222,111 @@ class ICoreWebView2Frame{
 				func();
 			}
 		},"void()");
-		var token = dll.ICoreWebView2Frame2_add_NavigationStarting(this.pointer,callback);
+		var token = dll.ICoreWebView2Frame2_add_NavigationStarting(this,callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_NavigationStarting = function(token){
 		removeCallback(token);
-		return dll.ICoreWebView2Frame2_remove_NavigationStarting(this.pointer, token);
+		return dll.ICoreWebView2Frame2_remove_NavigationStarting(this, token);
+	}
+	
+	add_ContentLoading = function(func){
+		var callback = ..raw.tostdcall(function(args){
+			if(type(func) == type.function){
+				func(dll.ICoreWebView2ContentLoadingEventArgs(args));
+			}
+		},"void(pointer)");
+		var token = dll.ICoreWebView2Frame2_add_ContentLoading(this,callback);
+		return addCallback(token,callback);
+	}
+	
+	remove_ContentLoading = function(token){
+		removeCallback(token);
+		return dll.ICoreWebView2Frame2_remove_ContentLoading(this, token);
+	}
+	
+	add_NavigationCompleted = function(func){
+		var callback = ..raw.tostdcall(function(args){
+			if(type(func) == type.function){
+				func(dll.ICoreWebView2NavigationCompletedEventArgs(args));
+			}
+		},"void(pointer)");
+		var token = dll.ICoreWebView2Frame2_add_NavigationCompleted(this,callback);
+		return addCallback(token,callback);
+	}
+	
+	remove_NavigationCompleted = function(token){
+		removeCallback(token);
+		return dll.ICoreWebView2Frame2_remove_NavigationCompleted(this, token);
+	}
+	
+	add_DOMContentLoaded = function(func){
+		var callback = ..raw.tostdcall(function(args){
+			if(type(func) == type.function){
+				func(dll.ICoreWebView2DOMContentLoadedEventArgs(args));
+			}
+		},"void(pointer)");
+		var token = dll.ICoreWebView2Frame2_add_DOMContentLoaded(this,callback);
+		return addCallback(token,callback);
+	}
+	
+	remove_DOMContentLoaded = function(token){
+		removeCallback(token);
+		return dll.ICoreWebView2Frame2_remove_DOMContentLoaded(this, token);
+	}
+	
+	ExecuteScript = function(javaScript,func){
+		var callback;
+		callback = ..raw.tostdcall(function(errorCode,resultObjectAsJson){
+			if(type(func) == type.function){
+				func(errorCode,resultObjectAsJson);
+			}
+			..raw._release(callback);
+		},"void(int,ustring)");
+		return dll.ICoreWebView2Frame2_ExecuteScript(this,javaScript,callback);
+	}
+	
+	PostWebMessageAsJson = function(webMessageAsJson){
+		return dll.ICoreWebView2Frame2_PostWebMessageAsJson(this,webMessageAsJson);
+	}
+	
+	PostWebMessageAsString = function(webMessageAsJson){
+		return dll.ICoreWebView2Frame2_PostWebMessageAsString(this,webMessageAsJson);
+	}
+	
+	add_WebMessageReceived = function(func){
+		var callback = ..raw.tostdcall(function(args){
+			if(type(func) == type.function){
+				func(dll.ICoreWebView2WebMessageReceivedEventArgs(args));
+			}
+		},"void(pointer)");
+		var token = dll.ICoreWebView2Frame2_add_WebMessageReceived(this,callback);
+		return addCallback(token,callback);
+	}
+	
+	remove_WebMessageReceived = function(token){
+		removeCallback(token);
+		return dll.ICoreWebView2Frame2_remove_WebMessageReceived(this, token);
+	}
+	
+	add_PermissionRequested = function(func){
+		var callback = ..raw.tostdcall(function(args){
+			if(type(func) == type.function){
+				func(dll.ICoreWebView2PermissionRequestedEventArgs2(args));
+			}
+		},"void(pointer)");
+		var token = dll.ICoreWebView2Frame3_add_PermissionRequested(this,callback);
+		return addCallback(token,callback);
+	}
+	
+	remove_PermissionRequested = function(token){
+		removeCallback(token);
+		return dll.ICoreWebView2Frame3_remove_PermissionRequested(this, token);
+	}
+	
+	PostSharedBufferToScript = function(sharedBuffer, access, additionalDataAsJson){
+		return dll.ICoreWebView2Frame4_PostSharedBufferToScript(this, sharedBuffer, access, additionalDataAsJson);
 	}
 	
 	@..webview2._metaProperty;
@@ -3243,20 +3339,18 @@ class ICoreWebView2ContentLoadingEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ContentLoadingEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2ContentLoadingEventArgs_Release(this);
 	}
 	
 	get_IsErrorPage = function(){
-		return dll.ICoreWebView2ContentLoadingEventArgs_get_IsErrorPage(this.pointer);
+		return dll.ICoreWebView2ContentLoadingEventArgs_get_IsErrorPage(this);
 	}
 	
 	get_NavigationId = function(){
-		return dll.ICoreWebView2ContentLoadingEventArgs_get_NavigationId(this.pointer);
+		return dll.ICoreWebView2ContentLoadingEventArgs_get_NavigationId(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -3269,20 +3363,18 @@ class ICoreWebView2BrowserProcessExitedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2BrowserProcessExitedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2BrowserProcessExitedEventArgs_Release(this);
 	}
 	
 	get_BrowserProcessExitKind = function(){
-		return dll.ICoreWebView2BrowserProcessExitedEventArgs_get_BrowserProcessExitKind(this.pointer);
+		return dll.ICoreWebView2BrowserProcessExitedEventArgs_get_BrowserProcessExitKind(this);
 	}
 	
 	get_BrowserProcessId = function(){
-		return dll.ICoreWebView2BrowserProcessExitedEventArgs_get_BrowserProcessId(this.pointer);
+		return dll.ICoreWebView2BrowserProcessExitedEventArgs_get_BrowserProcessId(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -3296,45 +3388,43 @@ class ICoreWebView2DownloadStartingEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2DownloadStartingEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2DownloadStartingEventArgs_Release(this);
 	}
 	
 	get_DownloadOperation = function(){
-		return dll.ICoreWebView2DownloadOperation( dll.ICoreWebView2DownloadStartingEventArgs_get_DownloadOperation(this.pointer) );
+		return dll.ICoreWebView2DownloadOperation( dll.ICoreWebView2DownloadStartingEventArgs_get_DownloadOperation(this) );
 	}
 	
 	get_Cancel = function(){
-		return dll.ICoreWebView2DownloadStartingEventArgs_get_Cancel(this.pointer);
+		return dll.ICoreWebView2DownloadStartingEventArgs_get_Cancel(this);
 	}
 	
 	put_Cancel = function(cancel){
-		return dll.ICoreWebView2DownloadStartingEventArgs_put_Cancel(this.pointer,cancel);
+		return dll.ICoreWebView2DownloadStartingEventArgs_put_Cancel(this,cancel);
 	}
 	
 		
 	get_ResultFilePath = function(){
-		return dll.ICoreWebView2DownloadStartingEventArgs_get_ResultFilePath(this.pointer);
+		return dll.ICoreWebView2DownloadStartingEventArgs_get_ResultFilePath(this);
 	}
 	
 	put_ResultFilePath = function(resultFilePath){
-		return dll.ICoreWebView2DownloadStartingEventArgs_put_ResultFilePath(this.pointer,resultFilePath);
+		return dll.ICoreWebView2DownloadStartingEventArgs_put_ResultFilePath(this,resultFilePath);
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2DownloadStartingEventArgs_get_Handled(this.pointer);
+		return dll.ICoreWebView2DownloadStartingEventArgs_get_Handled(this);
 	}
 	
 	put_Handled = function(handled){
-		return dll.ICoreWebView2DownloadStartingEventArgs_put_Handled(this.pointer,handled);
+		return dll.ICoreWebView2DownloadStartingEventArgs_put_Handled(this,handled);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2DownloadStartingEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2DownloadStartingEventArgs_GetDeferral(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -3353,7 +3443,7 @@ class ICoreWebView2DownloadOperation{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2DownloadOperation_Release(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_Release(this);
 	}
 	
 	add_BytesReceivedChanged = function(func){
@@ -3362,12 +3452,12 @@ class ICoreWebView2DownloadOperation{
 				func();
 			}
 		},"void()");
-		var token = dll.ICoreWebView2DownloadOperation_add_BytesReceivedChanged(this.pointer, callback);
+		var token = dll.ICoreWebView2DownloadOperation_add_BytesReceivedChanged(this, callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_BytesReceivedChanged = function(token){
-		return dll.ICoreWebView2DownloadOperation_remove_BytesReceivedChanged(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2DownloadOperation_remove_BytesReceivedChanged(this, removeCallback(token));
 	}
 	
 	add_EstimatedEndTimeChanged = function(func){
@@ -3376,12 +3466,12 @@ class ICoreWebView2DownloadOperation{
 				func();
 			}
 		},"void()");
-		var token = dll.ICoreWebView2DownloadOperation_add_EstimatedEndTimeChanged(this.pointer, callback);
+		var token = dll.ICoreWebView2DownloadOperation_add_EstimatedEndTimeChanged(this, callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_EstimatedEndTimeChanged = function(token){
-		return dll.ICoreWebView2DownloadOperation_remove_EstimatedEndTimeChanged(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2DownloadOperation_remove_EstimatedEndTimeChanged(this, removeCallback(token));
 	}
 	
 	add_StateChanged = function(func){
@@ -3390,64 +3480,64 @@ class ICoreWebView2DownloadOperation{
 				func();
 			}
 		},"void()");
-		var token = dll.ICoreWebView2DownloadOperation_add_StateChanged(this.pointer, callback);
+		var token = dll.ICoreWebView2DownloadOperation_add_StateChanged(this, callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_StateChanged = function(token){
-		return dll.ICoreWebView2DownloadOperation_remove_StateChanged(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2DownloadOperation_remove_StateChanged(this, removeCallback(token));
 	}
 	
 	get_Uri = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_Uri(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_Uri(this);
 	}
 	
 	get_ContentDisposition = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_ContentDisposition(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_ContentDisposition(this);
 	}
 	
 	get_MimeType = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_MimeType(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_MimeType(this);
 	}
 	
 	get_TotalBytesToReceive = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_TotalBytesToReceive(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_TotalBytesToReceive(this);
 	}
 	
 	get_BytesReceived = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_BytesReceived(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_BytesReceived(this);
 	}
 	
 	get_EstimatedEndTime = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_EstimatedEndTime(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_EstimatedEndTime(this);
 	}
 	
 	get_ResultFilePath = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_ResultFilePath(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_ResultFilePath(this);
 	}
 	
 	get_State = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_State(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_State(this);
 	}
 	
 	get_InterruptReason = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_InterruptReason(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_InterruptReason(this);
 	}
 	
 	Cancel = function(token){
-		return dll.ICoreWebView2DownloadOperation_Cancel(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_Cancel(this);
 	}
 	
 	Pause = function(token){
-		return dll.ICoreWebView2DownloadOperation_Pause(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_Pause(this);
 	}
 	
 	Resume = function(token){
-		return dll.ICoreWebView2DownloadOperation_Resume(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_Resume(this);
 	}
 	
 	get_CanResume = function(token){
-		return dll.ICoreWebView2DownloadOperation_get_CanResume(this.pointer);
+		return dll.ICoreWebView2DownloadOperation_get_CanResume(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -3461,63 +3551,61 @@ class ICoreWebView2ClientCertificateRequestedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_Release(this);
 	}
 	
 	get_Host = function(){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Host(this.pointer);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Host(this);
 	}
 	
 	get_Port = function(){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Port(this.pointer);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Port(this);
 	}
 	
 	get_IsProxy = function(){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_IsProxy(this.pointer);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_IsProxy(this);
 	}
 	
 	get_AllowedCertificateAuthorities = function(){
-		return dll.ICoreWebView2StringCollection( dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_AllowedCertificateAuthorities(this.pointer) );
+		return dll.ICoreWebView2StringCollection( dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_AllowedCertificateAuthorities(this) );
 	}
 	
 	get_MutuallyTrustedCertificates = function(){
-		return dll.ICoreWebView2ClientCertificateCollection( dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_MutuallyTrustedCertificates(this.pointer) );
+		return dll.ICoreWebView2ClientCertificateCollection( dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_MutuallyTrustedCertificates(this) );
 	}
 	
 	get_SelectedCertificate = function(){
-		return dll.ICoreWebView2ClientCertificate( dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_SelectedCertificate(this.pointer) );
+		return dll.ICoreWebView2ClientCertificate( dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_SelectedCertificate(this) );
 	}
 	
 	put_SelectedCertificate = function(value){
 		if(type(value) == type.table){
 			value = value.pointer;
 		}
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_put_SelectedCertificate(this.pointer, value);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_put_SelectedCertificate(this, value);
 	}
 	
 	get_Cancel = function(){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Cancel(this.pointer);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Cancel(this);
 	}
 	
 	put_Cancel = function(value){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_put_Cancel(this.pointer, value);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_put_Cancel(this, value);
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Handled(this.pointer);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_get_Handled(this);
 	}
 	
 	put_Handled = function(value){
-		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_put_Handled(this.pointer, value);
+		return dll.ICoreWebView2ClientCertificateRequestedEventArgs_put_Handled(this, value);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ClientCertificateRequestedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ClientCertificateRequestedEventArgs_GetDeferral(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -3535,15 +3623,15 @@ class ICoreWebView2StringCollection{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2StringCollection_Release(this.pointer);
+		return dll.ICoreWebView2StringCollection_Release(this);
 	}
 	
 	get_Count = function(){
-		return dll.ICoreWebView2StringCollection_get_Count(this.pointer);
+		return dll.ICoreWebView2StringCollection_get_Count(this);
 	}
 	
 	GetValueAtIndex = function(index){
-		return dll.ICoreWebView2StringCollection_GetValueAtIndex(this.pointer, index);
+		return dll.ICoreWebView2StringCollection_GetValueAtIndex(this, index);
 	}
 	
 	@..webview2._metaProperty;
@@ -3561,15 +3649,15 @@ class ICoreWebView2ClientCertificateCollection{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ClientCertificateCollection_Release(this.pointer);
+		return dll.ICoreWebView2ClientCertificateCollection_Release(this);
 	}
 	
 	get_Count = function(){
-		return dll.ICoreWebView2ClientCertificateCollection_get_Count(this.pointer);
+		return dll.ICoreWebView2ClientCertificateCollection_get_Count(this);
 	}
 	
 	GetValueAtIndex = function(index){
-		return dll.ICoreWebView2ClientCertificate( dll.ICoreWebView2ClientCertificateCollection_GetValueAtIndex(this.pointer, index) );
+		return dll.ICoreWebView2ClientCertificate( dll.ICoreWebView2ClientCertificateCollection_GetValueAtIndex(this, index) );
 	}
 	
 	@..webview2._metaProperty;
@@ -3587,43 +3675,43 @@ class ICoreWebView2ClientCertificate{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ClientCertificate_Release(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_Release(this);
 	}
 	
 	get_Subject = function(){
-		return dll.ICoreWebView2ClientCertificate_get_Subject(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_Subject(this);
 	}
 	
 	get_Issuer = function(){
-		return dll.ICoreWebView2ClientCertificate_get_Issuer(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_Issuer(this);
 	}
 	
 	get_ValidFrom = function(){
-		return dll.ICoreWebView2ClientCertificate_get_ValidFrom(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_ValidFrom(this);
 	}
 	
 	get_ValidTo = function(){
-		return dll.ICoreWebView2ClientCertificate_get_ValidTo(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_ValidTo(this);
 	}
 	
 	get_DerEncodedSerialNumber = function(){
-		return dll.ICoreWebView2ClientCertificate_get_DerEncodedSerialNumber(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_DerEncodedSerialNumber(this);
 	}
 	
 	get_DisplayName = function(){
-		return dll.ICoreWebView2ClientCertificate_get_DisplayName(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_DisplayName(this);
 	}
 	
 	ToPemEncoding = function(){
-		return dll.ICoreWebView2ClientCertificate_ToPemEncoding(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_ToPemEncoding(this);
 	}
 	
 	get_PemEncodedIssuerCertificateChain = function(){
-		return dll.ICoreWebView2StringCollection( dll.ICoreWebView2ClientCertificate_get_PemEncodedIssuerCertificateChain(this.pointer) );
+		return dll.ICoreWebView2StringCollection( dll.ICoreWebView2ClientCertificate_get_PemEncodedIssuerCertificateChain(this) );
 	}
 	
 	get_Kind = function(){
-		return dll.ICoreWebView2ClientCertificate_get_Kind(this.pointer);
+		return dll.ICoreWebView2ClientCertificate_get_Kind(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -3637,36 +3725,34 @@ class ICoreWebView2BasicAuthenticationRequestedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_Release(this);
 	}
 	
 	get_Uri = function(){
-		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Uri(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Uri(this);
 	}
 	
 	get_Challenge = function(){
-		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Challenge(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Challenge(this);
 	}
 	
 	get_Response = function(){
-		return dll.ICoreWebView2BasicAuthenticationResponse( dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Response(this.pointer));
+		return dll.ICoreWebView2BasicAuthenticationResponse( dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Response(this));
 	}
 	
 	get_Cancel = function(){
-		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Cancel(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_get_Cancel(this);
 	}
 	
 	put_Cancel = function(cancel){
-		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_put_Cancel(this.pointer,cancel);
+		return dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_put_Cancel(this,cancel);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2BasicAuthenticationRequestedEventArgs_GetDeferral(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -3684,23 +3770,23 @@ class ICoreWebView2BasicAuthenticationResponse{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2BasicAuthenticationResponse_Release(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationResponse_Release(this);
 	}
 	
 	get_UserName = function(){
-		return dll.ICoreWebView2BasicAuthenticationResponse_get_UserName(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationResponse_get_UserName(this);
 	}
 	
 	put_UserName = function(userName){
-		return dll.ICoreWebView2BasicAuthenticationResponse_put_UserName(this.pointer,userName);
+		return dll.ICoreWebView2BasicAuthenticationResponse_put_UserName(this,userName);
 	}
 	
 	get_Password = function(){
-		return dll.ICoreWebView2BasicAuthenticationResponse_get_Password(this.pointer);
+		return dll.ICoreWebView2BasicAuthenticationResponse_get_Password(this);
 	}
 	
 	put_Password = function(password){
-		return dll.ICoreWebView2BasicAuthenticationResponse_put_Password(this.pointer,password);
+		return dll.ICoreWebView2BasicAuthenticationResponse_put_Password(this,password);
 	}
 	
 	@..webview2._metaProperty;
@@ -3714,44 +3800,42 @@ class ICoreWebView2ContextMenuRequestedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ContextMenuRequestedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2ContextMenuRequestedEventArgs_Release(this);
 	}
 	
 	get_MenuItems = function(){
-		return dll.ICoreWebView2ContextMenuItemCollection( dll.ICoreWebView2ContextMenuRequestedEventArgs_get_MenuItems(this.pointer) );
+		return dll.ICoreWebView2ContextMenuItemCollection( dll.ICoreWebView2ContextMenuRequestedEventArgs_get_MenuItems(this) );
 	}
 	
 	get_ContextMenuTarget = function(){
-		return dll.ICoreWebView2ContextMenuTarget( dll.ICoreWebView2ContextMenuRequestedEventArgs_get_ContextMenuTarget(this.pointer) );
+		return dll.ICoreWebView2ContextMenuTarget( dll.ICoreWebView2ContextMenuRequestedEventArgs_get_ContextMenuTarget(this) );
 	}
 	
 	get_Location = function(){
-		return ..raw.convert( dll.ICoreWebView2ContextMenuRequestedEventArgs_get_Location(this.pointer) , ::POINT() );
+		return ..raw.convert( dll.ICoreWebView2ContextMenuRequestedEventArgs_get_Location(this) , ::POINT() );
 	}
 	
 	put_SelectedCommandId = function(value){
-		return dll.ICoreWebView2ContextMenuRequestedEventArgs_put_SelectedCommandId(this.pointer,value);
+		return dll.ICoreWebView2ContextMenuRequestedEventArgs_put_SelectedCommandId(this,value);
 	}
 	
 	get_SelectedCommandId = function(){
-		return dll.ICoreWebView2ContextMenuRequestedEventArgs_get_SelectedCommandId(this.pointer);
+		return dll.ICoreWebView2ContextMenuRequestedEventArgs_get_SelectedCommandId(this);
 	}
 	
 	put_Handled = function(value){
-		return dll.ICoreWebView2ContextMenuRequestedEventArgs_put_Handled(this.pointer,value);
+		return dll.ICoreWebView2ContextMenuRequestedEventArgs_put_Handled(this,value);
 	}
 	
 	get_Handled = function(){
-		return dll.ICoreWebView2ContextMenuRequestedEventArgs_get_Handled(this.pointer);
+		return dll.ICoreWebView2ContextMenuRequestedEventArgs_get_Handled(this);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ContextMenuRequestedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ContextMenuRequestedEventArgs_GetDeferral(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -3769,26 +3853,26 @@ class ICoreWebView2ContextMenuItemCollection{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ContextMenuItemCollection_Release(this.pointer);
+		return dll.ICoreWebView2ContextMenuItemCollection_Release(this);
 	}
 	
 	get_Count = function(){
-		return dll.ICoreWebView2ContextMenuItemCollection_get_Count(this.pointer);
+		return dll.ICoreWebView2ContextMenuItemCollection_get_Count(this);
 	}
 	
 	GetValueAtIndex = function(index){
-		return dll.ICoreWebView2ContextMenuItem( dll.ICoreWebView2ContextMenuItemCollection_GetValueAtIndex(this.pointer,index) );
+		return dll.ICoreWebView2ContextMenuItem( dll.ICoreWebView2ContextMenuItemCollection_GetValueAtIndex(this,index) );
 	}
 	
 	RemoveValueAtIndex = function(index){
-		return dll.ICoreWebView2ContextMenuItemCollection_RemoveValueAtIndex(this.pointer,index);
+		return dll.ICoreWebView2ContextMenuItemCollection_RemoveValueAtIndex(this,index);
 	}
 	
 	InsertValueAtIndex = function(index,value){
 		if(type(value) == type.table){
 			value = value.pointer
 		}
-		return dll.ICoreWebView2ContextMenuItemCollection_InsertValueAtIndex(this.pointer,index,value);
+		return dll.ICoreWebView2ContextMenuItemCollection_InsertValueAtIndex(this,index,value);
 	}
 	
 	@..webview2._metaProperty;
@@ -3808,51 +3892,51 @@ class ICoreWebView2ContextMenuItem{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ContextMenuItem_Release(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_Release(this);
 	}
 	
 	get_Name = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_Name(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_Name(this);
 	}
 	
 	get_Label = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_Label(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_Label(this);
 	}
 	
 	get_CommandId = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_CommandId(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_CommandId(this);
 	}
 	
 	get_ShortcutKeyDescription = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_ShortcutKeyDescription(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_ShortcutKeyDescription(this);
 	}
 	
 	get_Icon = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_Icon(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_Icon(this);
 	}
 	
 	get_Kind = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_Kind(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_Kind(this);
 	}
 	
 	put_IsEnabled = function(value){
-		return dll.ICoreWebView2ContextMenuItem_put_IsEnabled(this.pointer,value);
+		return dll.ICoreWebView2ContextMenuItem_put_IsEnabled(this,value);
 	}
 	
 	get_IsEnabled = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_IsEnabled(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_IsEnabled(this);
 	}
 	
 	put_IsChecked = function(value){
-		return dll.ICoreWebView2ContextMenuItem_put_IsChecked(this.pointer,value);
+		return dll.ICoreWebView2ContextMenuItem_put_IsChecked(this,value);
 	}
 	
 	get_IsChecked = function(){
-		return dll.ICoreWebView2ContextMenuItem_get_IsChecked(this.pointer);
+		return dll.ICoreWebView2ContextMenuItem_get_IsChecked(this);
 	}
 	
 	get_Children = function(){
-		return dll.ICoreWebView2ContextMenuItemCollection( dll.ICoreWebView2ContextMenuItem_get_Children(this.pointer) );
+		return dll.ICoreWebView2ContextMenuItemCollection( dll.ICoreWebView2ContextMenuItem_get_Children(this) );
 	}
 	
 	add_CustomItemSelected = function(func){
@@ -3861,12 +3945,12 @@ class ICoreWebView2ContextMenuItem{
 				func();
 			}
 		},"void()",this);
-		var token = dll.ICoreWebView2ContextMenuItem_add_CustomItemSelected(this.pointer,callback);
+		var token = dll.ICoreWebView2ContextMenuItem_add_CustomItemSelected(this,callback);
 		return addCallback(token,callback);
 	}
 	
 	remove_CustomItemSelected = function(token){
-		return dll.ICoreWebView2ContextMenuItem_remove_CustomItemSelected(this.pointer, removeCallback(token));
+		return dll.ICoreWebView2ContextMenuItem_remove_CustomItemSelected(this, removeCallback(token));
 	}
 	
 	@..webview2._metaProperty;
@@ -3885,59 +3969,59 @@ class ICoreWebView2ContextMenuTarget{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ContextMenuTarget_Release(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_Release(this);
 	}
 	
 	get_Kind = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_Kind(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_Kind(this);
 	}
 	
 	get_IsEditable = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_IsEditable(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_IsEditable(this);
 	}
 	
 	get_IsRequestedForMainFrame = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_IsRequestedForMainFrame(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_IsRequestedForMainFrame(this);
 	}
 	
 	get_PageUri = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_PageUri(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_PageUri(this);
 	}
 	
 	get_FrameUri = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_FrameUri(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_FrameUri(this);
 	}
 	
 	get_HasLinkUri = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_HasLinkUri(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_HasLinkUri(this);
 	}
 	
 	get_LinkUri = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_LinkUri(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_LinkUri(this);
 	}
 	
 	get_HasLinkText = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_HasLinkText(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_HasLinkText(this);
 	}
 	
 	get_LinkText = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_LinkText(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_LinkText(this);
 	}
 	
 	get_HasSourceUri = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_HasSourceUri(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_HasSourceUri(this);
 	}
 	
 	get_SourceUri = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_SourceUri(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_SourceUri(this);
 	}
 	
 	get_HasSelection = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_HasSelection(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_HasSelection(this);
 	}
 	
 	get_SelectionText = function(){
-		return dll.ICoreWebView2ContextMenuTarget_get_SelectionText(this.pointer);
+		return dll.ICoreWebView2ContextMenuTarget_get_SelectionText(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -3956,35 +4040,35 @@ class ICoreWebView2Profile{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2Profile_Release(this.pointer);
+		return dll.ICoreWebView2Profile_Release(this);
 	}
 	
 	get_ProfileName = function(){
-		return dll.ICoreWebView2Profile_get_ProfileName(this.pointer);
+		return dll.ICoreWebView2Profile_get_ProfileName(this);
 	}
 	
 	get_IsInPrivateModeEnabled = function(){
-		return dll.ICoreWebView2Profile_get_IsInPrivateModeEnabled(this.pointer);
+		return dll.ICoreWebView2Profile_get_IsInPrivateModeEnabled(this);
 	}
 	
 	get_ProfilePath = function(){
-		return dll.ICoreWebView2Profile_get_ProfilePath(this.pointer);
+		return dll.ICoreWebView2Profile_get_ProfilePath(this);
 	}
 	
 	get_DefaultDownloadFolderPath = function(){
-		return dll.ICoreWebView2Profile_get_DefaultDownloadFolderPath(this.pointer);
+		return dll.ICoreWebView2Profile_get_DefaultDownloadFolderPath(this);
 	}
 	
 	put_DefaultDownloadFolderPath = function(value){
-		return dll.ICoreWebView2Profile_put_DefaultDownloadFolderPath(this.pointer,value);
+		return dll.ICoreWebView2Profile_put_DefaultDownloadFolderPath(this,value);
 	}
 	
 	get_PreferredColorScheme = function(){
-		return dll.ICoreWebView2Profile_get_PreferredColorScheme(this.pointer);
+		return dll.ICoreWebView2Profile_get_PreferredColorScheme(this);
 	}
 	
 	put_PreferredColorScheme = function(value){
-		return dll.ICoreWebView2Profile_put_PreferredColorScheme(this.pointer,value);
+		return dll.ICoreWebView2Profile_put_PreferredColorScheme(this,value);
 	}
 	
 	ClearBrowsingData = function(dataKinds,func){
@@ -3995,7 +4079,7 @@ class ICoreWebView2Profile{
 			}
 			..raw._release(callback);
 		},"void(int)");
-		return dll.ICoreWebView2Profile2_ClearBrowsingData(this.pointer,dataKinds,callback);
+		return dll.ICoreWebView2Profile2_ClearBrowsingData(this,dataKinds,callback);
 	}
 	
 	ClearBrowsingDataInTimeRange = function(dataKinds, startTime, endTime, func){
@@ -4006,7 +4090,7 @@ class ICoreWebView2Profile{
 			}
 			..raw._release(callback);
 		},"void(int)");
-		return dll.ICoreWebView2Profile2_ClearBrowsingDataInTimeRange(this.pointer, dataKinds, startTime, endTime, callback);
+		return dll.ICoreWebView2Profile2_ClearBrowsingDataInTimeRange(this, dataKinds, startTime, endTime, callback);
 	}
 	
 	ClearBrowsingDataAll = function(func){
@@ -4017,15 +4101,15 @@ class ICoreWebView2Profile{
 			}
 			..raw._release(callback);
 		},"void(int)");
-		return dll.ICoreWebView2Profile2_ClearBrowsingDataAll(this.pointer,callback);
+		return dll.ICoreWebView2Profile2_ClearBrowsingDataAll(this,callback);
 	}
 	
 	get_PreferredTrackingPreventionLevel = function(){
-		return dll.ICoreWebView2Profile3_get_PreferredTrackingPreventionLevel(this.pointer);
+		return dll.ICoreWebView2Profile3_get_PreferredTrackingPreventionLevel(this);
 	}
 	
 	put_PreferredTrackingPreventionLevel = function(value){
-		return dll.ICoreWebView2Profile3_put_PreferredTrackingPreventionLevel(this.pointer,value);
+		return dll.ICoreWebView2Profile3_put_PreferredTrackingPreventionLevel(this,value);
 	}
 	
 	SetPermissionState = function(permissionKind, origin, state, func){
@@ -4036,7 +4120,7 @@ class ICoreWebView2Profile{
 			}
 			..raw._release(callback);
 		},"void(int)");
-		return dll.ICoreWebView2Profile4_SetPermissionState(this.pointer, permissionKind, origin, state, callback);
+		return dll.ICoreWebView2Profile4_SetPermissionState(this, permissionKind, origin, state, callback);
 	}
 	
 	GetNonDefaultPermissionSettings = function(func){
@@ -4047,7 +4131,7 @@ class ICoreWebView2Profile{
 			}
 			..raw._release(callback);
 		},"void(int,pointer)");
-		return dll.ICoreWebView2Profile4_GetNonDefaultPermissionSettings(this.pointer,callback);
+		return dll.ICoreWebView2Profile4_GetNonDefaultPermissionSettings(this,callback);
 	}
 	
 	@..webview2._metaProperty;
@@ -4066,15 +4150,15 @@ class ICoreWebView2PermissionSettingCollectionView{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2PermissionSettingCollectionView_Release(this.pointer);
+		return dll.ICoreWebView2PermissionSettingCollectionView_Release(this);
 	}
 	
 	get_Count = function(){
-		return dll.ICoreWebView2PermissionSettingCollectionView_get_Count(this.pointer);
+		return dll.ICoreWebView2PermissionSettingCollectionView_get_Count(this);
 	}
 	
 	GetValueAtIndex = function(index){
-		return dll.ICoreWebView2PermissionSetting( dll.ICoreWebView2PermissionSettingCollectionView_GetValueAtIndex(this.pointer, index) );
+		return dll.ICoreWebView2PermissionSetting( dll.ICoreWebView2PermissionSettingCollectionView_GetValueAtIndex(this, index) );
 	}
 	
 	@..webview2._metaProperty;
@@ -4092,19 +4176,19 @@ class ICoreWebView2PermissionSetting{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2PermissionSetting_Release(this.pointer);
+		return dll.ICoreWebView2PermissionSetting_Release(this);
 	}
 	
 	get_PermissionKind = function(){
-		return dll.ICoreWebView2PermissionSetting_get_PermissionKind(this.pointer);
+		return dll.ICoreWebView2PermissionSetting_get_PermissionKind(this);
 	}
 	
 	get_PermissionOrigin = function(){
-		return dll.ICoreWebView2PermissionSetting_get_PermissionOrigin(this.pointer);
+		return dll.ICoreWebView2PermissionSetting_get_PermissionOrigin(this);
 	}
 	
 	get_PermissionState = function(){
-		return dll.ICoreWebView2PermissionSetting_get_PermissionState(this.pointer);
+		return dll.ICoreWebView2PermissionSetting_get_PermissionState(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -4118,36 +4202,34 @@ class ICoreWebView2ServerCertificateErrorDetectedEventArgs{
 		}
 		
 		this.pointer = pointer;
-		
-		..table.gc(this,gcRelease);
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_Release(this.pointer);
+		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_Release(this);
 	}
 	
 	get_ErrorStatus = function(){
-		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_ErrorStatus(this.pointer);
+		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_ErrorStatus(this);
 	}
 	
 	get_RequestUri = function(){
-		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_RequestUri(this.pointer);
+		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_RequestUri(this);
 	}
 	
 	get_ServerCertificate = function(){
-		return dll.ICoreWebView2Certificate( dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_ServerCertificate(this.pointer) );
+		return dll.ICoreWebView2Certificate( dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_ServerCertificate(this) );
 	}
 	
 	get_Action = function(){
-		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_Action(this.pointer);
+		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_get_Action(this);
 	}
 	
 	put_Action = function(value){
-		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_put_Action(this.pointer,value);
+		return dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_put_Action(this,value);
 	}
 	
 	GetDeferral = function(){
-		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_GetDeferral(this.pointer) );
+		return dll.ICoreWebView2Deferral( dll.ICoreWebView2ServerCertificateErrorDetectedEventArgs_GetDeferral(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -4166,39 +4248,39 @@ class ICoreWebView2Certificate{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2Certificate_Release(this.pointer);
+		return dll.ICoreWebView2Certificate_Release(this);
 	}
 	
 	get_Subject = function(){
-		return dll.ICoreWebView2Certificate_get_Subject(this.pointer);
+		return dll.ICoreWebView2Certificate_get_Subject(this);
 	}
 	
 	get_Issuer = function(){
-		return dll.ICoreWebView2Certificate_get_Issuer(this.pointer);
+		return dll.ICoreWebView2Certificate_get_Issuer(this);
 	}
 	
 	get_ValidFrom = function(){
-		return dll.ICoreWebView2Certificate_get_ValidFrom(this.pointer);
+		return dll.ICoreWebView2Certificate_get_ValidFrom(this);
 	}
 	
 	get_ValidTo = function(){
-		return dll.ICoreWebView2Certificate_get_ValidTo(this.pointer);
+		return dll.ICoreWebView2Certificate_get_ValidTo(this);
 	}
 	
 	get_DerEncodedSerialNumber = function(){
-		return dll.ICoreWebView2Certificate_get_DerEncodedSerialNumber(this.pointer);
+		return dll.ICoreWebView2Certificate_get_DerEncodedSerialNumber(this);
 	}
 	
 	get_DisplayName = function(){
-		return dll.ICoreWebView2Certificate_get_DisplayName(this.pointer);
+		return dll.ICoreWebView2Certificate_get_DisplayName(this);
 	}
 	
 	ToPemEncoding = function(){
-		return dll.ICoreWebView2Certificate_ToPemEncoding(this.pointer);
+		return dll.ICoreWebView2Certificate_ToPemEncoding(this);
 	}
 	
 	get_PemEncodedIssuerCertificateChain = function(){
-		return dll.ICoreWebView2StringCollection( dll.ICoreWebView2Certificate_get_PemEncodedIssuerCertificateChain(this.pointer) );
+		return dll.ICoreWebView2StringCollection( dll.ICoreWebView2Certificate_get_PemEncodedIssuerCertificateChain(this) );
 	}
 	
 	@..webview2._metaProperty;
@@ -4216,27 +4298,27 @@ class ICoreWebView2SharedBuffer{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2SharedBuffer_Release(this.pointer);
+		return dll.ICoreWebView2SharedBuffer_Release(this);
 	}
 	
 	get_Size = function(){
-		return dll.ICoreWebView2SharedBuffer_get_Size(this.pointer);
+		return dll.ICoreWebView2SharedBuffer_get_Size(this);
 	}
 	
 	get_Buffer = function(){
-		return ..raw.buffer( dll.ICoreWebView2SharedBuffer_get_Buffer(this.pointer) );
+		return ..raw.buffer( dll.ICoreWebView2SharedBuffer_get_Buffer(this) );
 	}
 	
 	OpenStream = function(){
-		return dll.ICoreWebView2SharedBuffer_OpenStream(this.pointer);
+		return dll.ICoreWebView2SharedBuffer_OpenStream(this);
 	}
 	
 	get_FileMappingHandle = function(){
-		return dll.ICoreWebView2SharedBuffer_get_FileMappingHandle(this.pointer);
+		return dll.ICoreWebView2SharedBuffer_get_FileMappingHandle(this);
 	}
 	
 	Close = function(){
-		return dll.ICoreWebView2SharedBuffer_Close(this.pointer);
+		return dll.ICoreWebView2SharedBuffer_Close(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -4255,47 +4337,47 @@ class ICoreWebView2WindowFeatures{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2WindowFeatures_Release(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_Release(this);
 	}
 	
 	get_HasPosition = function(){
-		return dll.ICoreWebView2WindowFeatures_get_HasPosition(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_HasPosition(this);
 	}
 	
 	get_HasSize = function(){
-		return dll.ICoreWebView2WindowFeatures_get_HasSize(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_HasSize(this);
 	}
 	
 	get_Left = function(){
-		return dll.ICoreWebView2WindowFeatures_get_Left(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_Left(this);
 	}
 	
 	get_Top = function(){
-		return dll.ICoreWebView2WindowFeatures_get_Top(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_Top(this);
 	}
 	
 	get_Height = function(){
-		return dll.ICoreWebView2WindowFeatures_get_Height(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_Height(this);
 	}
 	
 	get_Width = function(){
-		return dll.ICoreWebView2WindowFeatures_get_Width(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_Width(this);
 	}
 	
 	get_ShouldDisplayMenuBar = function(){
-		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayMenuBar(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayMenuBar(this);
 	}
 	
 	get_ShouldDisplayStatus = function(){
-		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayStatus(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayStatus(this);
 	}
 	
 	get_ShouldDisplayToolbar = function(){
-		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayToolbar(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayToolbar(this);
 	}
 	
 	get_ShouldDisplayScrollBars = function(){
-		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayScrollBars(this.pointer);
+		return dll.ICoreWebView2WindowFeatures_get_ShouldDisplayScrollBars(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -4313,11 +4395,11 @@ class ICoreWebView2File{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2File_Release(this.pointer);
+		return dll.ICoreWebView2File_Release(this);
 	}
 	
 	get_Path = function(){
-		return dll.ICoreWebView2File_get_Path(this.pointer);
+		return dll.ICoreWebView2File_get_Path(this);
 	}
 	
 	@..webview2._metaProperty;
@@ -4335,15 +4417,15 @@ class ICoreWebView2ObjectCollectionView{
 	};
 	
 	Release = function(){
-		return dll.ICoreWebView2ObjectCollectionView_Release(this.pointer);
+		return dll.ICoreWebView2ObjectCollectionView_Release(this);
 	}
 	
 	get_Count = function(){
-		return dll.ICoreWebView2ObjectCollectionView_get_Count(this.pointer);
+		return dll.ICoreWebView2ObjectCollectionView_get_Count(this);
 	}
 	
 	GetValueAtIndex = function(i){
-		return dll.ICoreWebView2ObjectCollectionView_GetValueAtIndex(this.pointer,i);
+		return dll.ICoreWebView2ObjectCollectionView_GetValueAtIndex(this,i);
 	}
 	
 	@..webview2._metaProperty;
